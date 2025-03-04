@@ -10,7 +10,7 @@
 - Adreno 630 and over
 
 ## Links:
-- [Official Discord Server![- Android]
+- [Official Discord Server]
 ](https://discord.gg/ycqFhBeC)
 - [Official Download links](https://github.com/DHrpcs3/rpcs3-android/tags)
 
