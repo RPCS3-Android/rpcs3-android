@@ -45,6 +45,19 @@ jobs:
         fetch-depth: 0
         lfs: true
 
+    - name: Setup CCache
+      uses: hendrikmuhs/ccache-action@v1.2
+
+    - name: Setup Gradle Cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-android-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-android-
+            
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
@@ -65,6 +78,9 @@ jobs:
       run: ./gradlew
 
     - name: Build with Gradle
+      env: 
+        CMAKE_C_COMPILER_LAUNCHER: "ccache"
+        CMAKE_CXX_COMPILER_LAUNCHER: "ccache"
       run: ./gradlew build
 
     - name: Build release artifacts
