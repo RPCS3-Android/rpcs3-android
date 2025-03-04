@@ -7,6 +7,9 @@ name: Java CI with Gradle
 on:
   workflow_dispatch:
     inputs:
+      shouldrelease:
+          description: Create release
+          type: boolean
       releasetag:
         description: Enter the tag name
         type: string
@@ -93,7 +96,7 @@ jobs:
 
     - name: Create release
       uses: softprops/action-gh-release@v2
-      if: ${{ github.event_name == 'workflow_dispatch' }}
+      if: ${{ inputs.shouldrelease }}
       with:
         prerelease: ${{ inputs.releasetype }}
         tag_name: ${{ inputs.releasetag }}
