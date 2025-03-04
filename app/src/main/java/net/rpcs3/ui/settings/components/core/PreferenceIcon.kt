@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import net.rpcs3.ui.settings.components.LocalPreferenceState
 import net.rpcs3.ui.settings.util.preferenceColor
 import net.rpcs3.ui.settings.util.sizeIn
 
@@ -21,7 +22,7 @@ import net.rpcs3.ui.settings.util.sizeIn
 fun PreferenceIcon(
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: Boolean = LocalPreferenceState.current,
     contentDescription: String? = null,
     tint: Color = preferenceColor(enabled, LocalContentColor.current),
 ) {

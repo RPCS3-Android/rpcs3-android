@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
@@ -19,6 +19,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import net.rpcs3.ui.common.ComposePreview
+import net.rpcs3.ui.settings.components.LocalPreferenceState
+import net.rpcs3.ui.settings.components.core.PreferenceIcon
 import net.rpcs3.ui.settings.components.core.PreferenceSubtitle
 import net.rpcs3.ui.settings.components.core.PreferenceTitle
 
@@ -46,6 +48,7 @@ import net.rpcs3.ui.settings.components.core.PreferenceTitle
  * @param shape The shape of the preference surface.
  * @param tonalElevation The tonal elevation of the preference surface.
  * @param shadowElevation The shadow elevation of the preference surface.
+ * @param enabled Whether the preference is enabled or disabled.
  * @param onClick callback invoked when the preference item is clicked.
  *
  * @see Surface
@@ -61,31 +64,39 @@ fun BasePreference(
     shape: Shape = MaterialTheme.shapes.medium,
     tonalElevation: Dp = 0.dp,
     shadowElevation: Dp = 0.dp,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = shape,
-        tonalElevation = tonalElevation,
-        shadowElevation = shadowElevation
+    CompositionLocalProvider(
+        LocalPreferenceState provides enabled
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(all = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        val preferenceOnClick: () -> Unit = {
+            if (enabled) onClick()
+        }
+        Surface(
+            onClick = preferenceOnClick,
+            modifier = modifier,
+            shape = shape,
+            tonalElevation = tonalElevation,
+            shadowElevation = shadowElevation
         ) {
-            leadingContent?.invoke()
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(all = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                title()
-                subContent?.invoke()
+                leadingContent?.invoke()
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                ) {
+                    title()
+                    subContent?.invoke()
+                }
+                trailingContent?.invoke()
             }
-            trailingContent?.invoke()
         }
     }
 }
@@ -97,8 +108,23 @@ private fun BasePreferencePreview() {
         BasePreference(
             title = { PreferenceTitle("Preference Title") },
             subContent = { PreferenceSubtitle("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ullamcorper tempor imperdiet. Tempor magna proident pariatur nonumy iusto, sint laborum possim accumsan, elit nonummy facer enim autem eiusmod lobortis reprehenderit molestie vel esse aliquyam cupiditat velit nisi aliquid ipsum. Erat accusam reprehenderit. Feugiat aliquyam iure. Nisi ex officia.", maxLines = 2) },
-            leadingContent = { Icon(Icons.Default.Search, null) },
-            trailingContent = { Icon(Icons.AutoMirrored.Default.KeyboardArrowRight, null) },
+            leadingContent = { PreferenceIcon(Icons.Default.Search) },
+            trailingContent = { PreferenceIcon(Icons.AutoMirrored.Default.KeyboardArrowRight) },
+            onClick = {}
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun BasePreferenceDisabledPreview() {
+    ComposePreview {
+        BasePreference(
+            title = { PreferenceTitle("Preference Title") },
+            subContent = { PreferenceSubtitle("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ullamcorper tempor imperdiet. Tempor magna proident pariatur nonumy iusto, sint laborum possim accumsan, elit nonummy facer enim autem eiusmod lobortis reprehenderit molestie vel esse aliquyam cupiditat velit nisi aliquid ipsum. Erat accusam reprehenderit. Feugiat aliquyam iure. Nisi ex officia.", maxLines = 2) },
+            leadingContent = { PreferenceIcon(Icons.Default.Search) },
+            trailingContent = { PreferenceIcon(Icons.AutoMirrored.Default.KeyboardArrowRight) },
+            enabled = false,
             onClick = {}
         )
     }

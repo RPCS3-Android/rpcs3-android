@@ -10,6 +10,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import net.rpcs3.ui.settings.components.LocalPreferenceState
 import net.rpcs3.ui.settings.util.preferenceColor
 import net.rpcs3.ui.settings.util.preferenceSubtitleColor
 
@@ -24,7 +25,7 @@ import net.rpcs3.ui.settings.util.preferenceSubtitleColor
 internal fun PreferenceTitle(
     title: String,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: Boolean = LocalPreferenceState.current,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
     style: TextStyle = MaterialTheme.typography.titleMedium,
@@ -45,7 +46,7 @@ internal fun PreferenceTitle(
 internal fun PreferenceTitle(
     title: AnnotatedString,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: Boolean = LocalPreferenceState.current,
     maxLines: Int = 1,
     overflow: TextOverflow = TextOverflow.Ellipsis,
     style: TextStyle = MaterialTheme.typography.titleMedium,
@@ -65,7 +66,7 @@ internal fun PreferenceTitle(
 fun PreferenceSubtitle(
     text: String,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: Boolean = LocalPreferenceState.current,
     maxLines: Int = 2,
     overflow: TextOverflow = TextOverflow.Ellipsis,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
@@ -85,7 +86,7 @@ fun PreferenceSubtitle(
 fun PreferenceSubtitle(
     text: AnnotatedString,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
+    enabled: Boolean = LocalPreferenceState.current,
     maxLines: Int = 2,
     overflow: TextOverflow = TextOverflow.Ellipsis,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
