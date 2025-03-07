@@ -22,7 +22,7 @@ object AlertDialogQueue {
     }
 
     @Composable
-    fun AlertDialog() {
+    fun alertDialog() {
         if (dialogs.isNotEmpty()) {
             val dialog = dialogs.first()
 
