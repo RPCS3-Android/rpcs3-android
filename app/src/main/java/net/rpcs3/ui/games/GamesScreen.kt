@@ -45,6 +45,7 @@ import net.rpcs3.GameProgressType
 import net.rpcs3.GameRepository
 import net.rpcs3.ProgressRepository
 import net.rpcs3.RPCS3Activity
+import net.rpcs3.dialogs.AlertDialogQueue
 import java.io.File
 
 private fun withAlpha(color: Color, alpha: Float): Color {
@@ -86,10 +87,16 @@ fun GameItem(game: Game) {
         Card(shape = RectangleShape, modifier = Modifier.fillMaxSize().combinedClickable(
             onClick = {
                 if (FirmwareRepository.version.value == null) {
-                    // TODO: firmware not installed
+                    AlertDialogQueue.showDialog(
+                        title = "Firmware Missing",
+                        message = "Please install the required firmware to continue."
+                    )
                 }
                 else if (FirmwareRepository.progressChannel.value != null) {
-                    // TODO: firmware in use
+                    AlertDialogQueue.showDialog(
+                        title = "Firmware Missing",
+                        message = "Please wait until firmware installs successfully to continue."
+                    )
                 } else if (game.info.path != "$" && game.findProgress(
                         arrayOf(
                             GameProgressType.Install,
@@ -98,7 +105,10 @@ fun GameItem(game: Game) {
                     ) == null
                 ) {
                     if (game.findProgress(GameProgressType.Compile) != null) {
-                        // TODO: game is compiling
+                        AlertDialogQueue.showDialog(
+                            title = "Game compiling isn't finished yet",
+                            message = "Please wait until game compiles to continue."
+                        )
                     } else {
                         GameRepository.onBoot(game)
                         val emulatorWindow = Intent(
