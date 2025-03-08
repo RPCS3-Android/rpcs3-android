@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.PreviewLightDark
 import net.rpcs3.ui.common.ComposePreview
 import net.rpcs3.ui.settings.components.core.PreferenceIcon
 import net.rpcs3.ui.settings.components.core.PreferenceSubtitle
@@ -78,7 +79,7 @@ fun SwitchPreference(
     )
 }
 
-@Preview
+@PreviewLightDark
 @Composable
 private fun SwitchPreview() {
     ComposePreview {
@@ -94,7 +95,7 @@ private fun SwitchPreview() {
     }
 }
 
-@Preview
+@PreviewLightDark
 @Composable
 private fun SwitchDisabledPreview() {
     ComposePreview {
