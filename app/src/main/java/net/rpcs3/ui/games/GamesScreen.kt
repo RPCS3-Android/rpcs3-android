@@ -47,6 +47,7 @@ import net.rpcs3.GameRepository
 import net.rpcs3.ProgressRepository
 import net.rpcs3.RPCS3Activity
 import java.io.File
+import kotlinx.coroutines.launch
 
 private fun withAlpha(color: Color, alpha: Float): Color {
     return Color(
