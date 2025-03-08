@@ -1,6 +1,10 @@
 package net.rpcs3.ui.settings
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import net.rpcs3.R
+import net.rpcs3.provider.AppDataDocumentProvider
 import net.rpcs3.ui.common.ComposePreview
 import net.rpcs3.ui.settings.components.core.PreferenceIcon
 import net.rpcs3.ui.settings.components.core.PreferenceSubtitle
@@ -88,7 +93,7 @@ fun SettingsScreen(
                     leadingIcon = { PreferenceIcon(icon = painterResource(R.drawable.ic_folder)) },
                     subtitle = { PreferenceSubtitle(text = "Open internal directory of RPCS3 in file manager") },
                 ) {
-                    // Open Internal Directory
+                    context.launchBrowseIntent()
                 }
             }
 
@@ -131,5 +136,19 @@ fun SettingsScreen(
 private fun SettingsScreenPreview() {
     ComposePreview {
         SettingsScreen {}
+    }
+}
+
+private fun Context.launchBrowseIntent(): Boolean {
+    return try {
+        val intent = Intent("android.provider.action.BROWSE").apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            data = DocumentsContract.buildRootUri(AppDataDocumentProvider.ROOT_ID, AppDataDocumentProvider.AUTHORITY)
+            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        startActivity(intent)
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
     }
 }
