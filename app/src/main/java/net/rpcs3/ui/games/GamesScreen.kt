@@ -29,6 +29,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -214,13 +215,17 @@ fun GameItem(game: Game) {
 fun GamesScreen() {
     val games = remember { mutableStateOf(GameRepository.list()) }
     val isRefreshing = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     PullToRefreshBox(
         isRefreshing = isRefreshing.value,
         onRefresh = { 
-            GameRepository.load()
-            games.value = GameRepository.list()
-            isRefreshing.value = false 
+            coroutineScope.launch {
+                isRefreshing.value = true
+                GameRepository.load()
+                games.value = GameRepository.list()
+                isRefreshing.value = false 
+            }
         },
     ) {
         LazyVerticalGrid(
