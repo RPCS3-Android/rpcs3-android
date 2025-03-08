@@ -26,10 +26,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -217,16 +219,26 @@ fun GamesScreen() {
     val games = remember { mutableStateOf(GameRepository.list()) }
     val isRefreshing = remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val state = rememberPullToRefreshState()
 
     PullToRefreshBox(
         isRefreshing = isRefreshing.value,
+        state = state,
         onRefresh = { 
+            isRefreshing.value = true
             coroutineScope.launch {
-                isRefreshing.value = true
+                delay(1000)
                 GameRepository.load()
                 games.value = GameRepository.list()
                 isRefreshing.value = false 
             }
+        },
+        indicator = {
+            PullToRefreshDefaults.LoadingIndicator(
+                state = state,
+                isRefreshing = isRefreshing,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
         },
     ) {
         LazyVerticalGrid(
