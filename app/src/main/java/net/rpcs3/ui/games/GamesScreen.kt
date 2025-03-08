@@ -212,20 +212,24 @@ fun GameItem(game: Game) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GamesScreen() {
-    val games = remember { GameRepository.list() }
+    val games = remember { mutableStateOf(GameRepository.list()) }
     val isRefreshing = remember { mutableStateOf(false) }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing.value,
-        onRefresh = { isRefreshing.value = false },
+        onRefresh = { 
+            GameRepository.load()
+            games.value = GameRepository.list()
+            isRefreshing.value = false 
+        },
     ) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 320.dp * 0.6f),
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxSize()
         ) {
-            items(count = games.size, key = { index -> games[index].info.path }) { index ->
-                GameItem(games[index])
+            items(count = games.value.size, key = { index -> games.value[index].info.path }) { index ->
+                GameItem(games.value[index])
             }
         }
     }
