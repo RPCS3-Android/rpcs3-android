@@ -31,28 +31,6 @@ import net.rpcs3.ui.settings.components.core.PreferenceTitle
 
 @Composable
 fun RegularPreference(
-    title: String,
-    leadingIcon: ImageVector,
-    modifier: Modifier = Modifier,
-    subtitle: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null,
-    enabled: Boolean = true,
-    onClick: () -> Unit
-) {
-    BasePreference(
-        title = { PreferenceTitle(title = title) },
-        modifier = modifier,
-        subContent = subtitle,
-        leadingContent = { PreferenceIcon(icon = leadingIcon) },
-        trailingContent = trailingContent,
-        enabled = enabled,
-        onClick = onClick
-    )
-}
-
-
-@Composable
-fun RegularPreference(
     title: @Composable () -> Unit,
     leadingIcon: @Composable (() -> Unit),
     modifier: Modifier = Modifier,
@@ -66,6 +44,27 @@ fun RegularPreference(
         modifier = modifier,
         subContent = subtitle,
         leadingContent = leadingIcon,
+        trailingContent = trailingContent,
+        enabled = enabled,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun RegularPreference(
+    title: String,
+    leadingIcon: ImageVector,
+    modifier: Modifier = Modifier,
+    subtitle: @Composable (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = null,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    RegularPreference(
+        title = { PreferenceTitle(title = title) },
+        leadingIcon = { PreferenceIcon(icon = leadingIcon) },
+        modifier = modifier,
+        subtitle = subtitle,
         trailingContent = trailingContent,
         enabled = enabled,
         onClick = onClick
