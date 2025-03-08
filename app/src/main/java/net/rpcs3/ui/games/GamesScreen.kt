@@ -50,6 +50,7 @@ import net.rpcs3.ProgressRepository
 import net.rpcs3.RPCS3Activity
 import java.io.File
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private fun withAlpha(color: Color, alpha: Float): Color {
     return Color(
@@ -234,7 +235,7 @@ fun GamesScreen() {
             }
         },
         indicator = {
-            PullToRefreshDefaults.LoadingIndicator(
+            PullToRefreshDefaults.Indicator(
                 state = state,
                 isRefreshing = isRefreshing,
                 modifier = Modifier.align(Alignment.TopCenter),
