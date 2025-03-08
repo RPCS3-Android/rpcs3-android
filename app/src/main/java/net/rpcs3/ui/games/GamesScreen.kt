@@ -237,7 +237,7 @@ fun GamesScreen() {
         indicator = {
             PullToRefreshDefaults.Indicator(
                 state = state,
-                isRefreshing = isRefreshing,
+                isRefreshing = isRefreshing.value,
                 modifier = Modifier.align(Alignment.TopCenter),
             )
         },
