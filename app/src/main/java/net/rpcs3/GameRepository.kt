@@ -73,14 +73,17 @@ class GameRepository {
             }
         }
 
-        fun load() {
-            try {
-                instance.games.clear()
-                instance.games += Json.decodeFromString<Array<GameInfo>>(File(RPCS3.rootDirectory + "games.json").readText())
-                    .map { info -> Game(toStore(info)) }
-            } catch (_: NotFoundException) {
-            } catch (e: Exception) {
-                e.printStackTrace()
+        suspend fun load() {
+            withContext(Dispatchers.IO) {
+                try {
+                    instance.games.clear()
+                    instance.games += Json.decodeFromString<Array<GameInfo>>(
+                        File(RPCS3.rootDirectory + "games.json").readText()
+                    ).map { info -> Game(toStore(info)) }
+                } catch (_: NotFoundException) {
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
 
