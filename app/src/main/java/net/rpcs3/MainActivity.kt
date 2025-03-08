@@ -6,8 +6,10 @@ import android.app.NotificationManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
 import net.rpcs3.ui.navigation.AppNavHost
 import kotlin.concurrent.thread
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +23,7 @@ class MainActivity : ComponentActivity() {
             RPCS3.rootDirectory += "/"
         }
 
-        GameRepository.load()
+        lifecycleScope.launch { GameRepository.load() }
         FirmwareRepository.load()
 
         Permission.PostNotifications.requestPermission(this)
