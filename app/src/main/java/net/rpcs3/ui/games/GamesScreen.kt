@@ -26,9 +26,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,8 +48,11 @@ import net.rpcs3.GameProgressType
 import net.rpcs3.GameRepository
 import net.rpcs3.ProgressRepository
 import net.rpcs3.RPCS3Activity
+import net.rpcs3.RPCS3
 import net.rpcs3.dialogs.AlertDialogQueue
 import java.io.File
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private fun withAlpha(color: Color, alpha: Float): Color {
     return Color(
@@ -222,20 +228,41 @@ fun GameItem(game: Game) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GamesScreen() {
-    val games = remember { GameRepository.list() }
+    val games = remember { mutableStateOf(GameRepository.list()) }
     val isRefreshing = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    val state = rememberPullToRefreshState()
 
     PullToRefreshBox(
         isRefreshing = isRefreshing.value,
-        onRefresh = { isRefreshing.value = false },
+        state = state,
+        onRefresh = { 
+            isRefreshing.value = true
+            coroutineScope.launch {
+                delay(300)
+                RPCS3.instance.collectGameInfo(RPCS3.rootDirectory, -1)
+                GameRepository.load()
+                games.value = GameRepository.list()
+                isRefreshing.value = false 
+            }
+        },
+        indicator = {
+            PullToRefreshDefaults.Indicator(
+                state = state,
+                isRefreshing = isRefreshing.value,
+                modifier = Modifier.align(Alignment.TopCenter),
+                color = MaterialTheme.colorScheme.onPrimary,
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        },
     ) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 320.dp * 0.6f),
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.fillMaxSize()
         ) {
-            items(count = games.size, key = { index -> games[index].info.path }) { index ->
-                GameItem(games[index])
+            items(count = games.value.size, key = { index -> games.value[index].info.path }) { index ->
+                GameItem(games.value[index])
             }
         }
     }

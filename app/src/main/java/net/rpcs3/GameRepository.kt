@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.security.InvalidParameterException
 
@@ -73,14 +75,17 @@ class GameRepository {
             }
         }
 
-        fun load() {
-            try {
-                instance.games.clear()
-                instance.games += Json.decodeFromString<Array<GameInfo>>(File(RPCS3.rootDirectory + "games.json").readText())
-                    .map { info -> Game(toStore(info)) }
-            } catch (_: NotFoundException) {
-            } catch (e: Exception) {
-                e.printStackTrace()
+        suspend fun load() {
+            withContext(Dispatchers.IO) {
+                try {
+                    instance.games.clear()
+                    instance.games += Json.decodeFromString<Array<GameInfo>>(
+                        File(RPCS3.rootDirectory + "games.json").readText()
+                    ).map { info -> Game(toStore(info)) }
+                } catch (_: NotFoundException) {
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
 
