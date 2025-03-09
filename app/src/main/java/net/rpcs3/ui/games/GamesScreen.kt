@@ -239,6 +239,8 @@ fun GamesScreen() {
                 state = state,
                 isRefreshing = isRefreshing.value,
                 modifier = Modifier.align(Alignment.TopCenter),
+                color = MaterialTheme.colorScheme.onPrimary,
+                containerColor = MaterialTheme.colorScheme.primary
             )
         },
     ) {
