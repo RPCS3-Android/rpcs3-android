@@ -11,6 +11,7 @@ import android.provider.DocumentsProvider
 import net.rpcs3.R
 import java.io.File
 import java.io.FileNotFoundException
+import java.io.IOException
 
 class AppDataDocumentProvider : DocumentsProvider() {
     companion object {
@@ -76,8 +77,8 @@ class AppDataDocumentProvider : DocumentsProvider() {
 
     private fun includeFile(cursor: MatrixCursor, file: File) {
         val flags = when {
-            file.isDirectory -> Document.FLAG_DIR_SUPPORTS_CREATE or Document.FLAG_SUPPORTS_DELETE
-            else -> Document.FLAG_SUPPORTS_WRITE or Document.FLAG_SUPPORTS_REMOVE or Document.FLAG_SUPPORTS_DELETE
+            file.isDirectory -> Document.FLAG_DIR_SUPPORTS_CREATE or Document.FLAG_SUPPORTS_REMOVE or Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME
+            else -> Document.FLAG_SUPPORTS_WRITE or Document.FLAG_SUPPORTS_REMOVE or Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME
         }
 
         cursor.newRow()
@@ -121,5 +122,37 @@ class AppDataDocumentProvider : DocumentsProvider() {
 
     override fun openDocument(documentId: String, mode: String, signal: CancellationSignal?): ParcelFileDescriptor {
         return ParcelFileDescriptor.open(obtainFile(documentId), ParcelFileDescriptor.parseMode(mode))
+    }
+
+    override fun removeDocument(documentId: String, parentDocumentId: String) {
+        deleteDocument(documentId)
+    }
+
+    override fun renameDocument(documentId: String?, displayName: String?): String? {
+        if (documentId == null || displayName == null) {
+            throw IllegalArgumentException("Document ID and display name must not be null")
+        }
+
+        val file = obtainFile(documentId)
+        if (!file.exists()) {
+            throw FileNotFoundException("File not found: $documentId")
+        }
+
+        val parentDir = file.parentFile
+        val newFile = File(parentDir, displayName)
+
+        if (newFile.exists()) {
+            throw FileAlreadyExistsException(newFile)
+        }
+
+        if (!file.renameTo(newFile)) {
+            throw IOException("Failed to rename file: ${file.absolutePath} to ${newFile.absolutePath}")
+        }
+
+        return obtainDocumentId(newFile)
+    }
+
+    override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean {
+        return documentId.startsWith(parentDocumentId)
     }
 }
