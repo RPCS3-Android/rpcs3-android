@@ -45,6 +45,7 @@ import net.rpcs3.GameRepository
 import net.rpcs3.ProgressRepository
 import net.rpcs3.RPCS3
 import net.rpcs3.ui.games.GamesScreen
+import net.rpcs3.dialogs.AlertDialogQueue
 import kotlin.concurrent.thread
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,6 +62,8 @@ fun AppNavHost() {
     }
 
     val context = LocalContext.current
+
+    AlertDialogQueue.alertDialog()
 
     val installPkgLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
