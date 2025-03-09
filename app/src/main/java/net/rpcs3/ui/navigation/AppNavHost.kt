@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.dropUnlessResumed
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import androidx.activity.compose.BackHandler
 import kotlinx.coroutines.launch
 import net.rpcs3.FirmwareRepository
@@ -45,25 +50,51 @@ import net.rpcs3.GameRepository
 import net.rpcs3.ProgressRepository
 import net.rpcs3.RPCS3
 import net.rpcs3.ui.games.GamesScreen
+import net.rpcs3.ui.settings.SettingsScreen
 import net.rpcs3.dialogs.AlertDialogQueue
 import kotlin.concurrent.thread
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview
 @Composable
 fun AppNavHost() {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    val navController = rememberNavController()
+    AlertDialogQueue.alertDialog()
+    NavHost(
+        navController = navController,
+        startDestination = "games"
+    ) {
+        composable(
+            route = "games"
+        ) {
+            GamesDestination(
+                navigateToSettings = { navController.navigate("settings") }
+            )
+        }
 
+        composable(
+            route = "settings"
+        ) {
+            SettingsScreen(
+                navigateBack = navController::navigateUp
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GamesDestination(
+    navigateToSettings: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch {
             drawerState.close()
         }
     }
-
-    val context = LocalContext.current
-
-    AlertDialogQueue.alertDialog()
 
     val installPkgLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -148,117 +179,125 @@ fun AppNavHost() {
         }
     )
 
-    MaterialTheme {
-        ModalNavigationDrawer(
-            drawerState = drawerState,
-            drawerContent = {
-                ModalDrawerSheet {
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 16.dp)
-                            .verticalScroll(
-                                rememberScrollState()
-                            )
-                    ) {
-                        Spacer(Modifier.height(12.dp))
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .verticalScroll(
+                            rememberScrollState()
+                        )
+                ) {
+                    Spacer(Modifier.height(12.dp))
 
-                        NavigationDrawerItem(
-                            label = {
-                                Text(
-                                    "Firmware: " + (FirmwareRepository.version.value ?: "None")
-                                )
-                            },
-                            selected = false,
-                            icon = { Icon(Icons.Outlined.Build, contentDescription = null) },
-                            badge = {
-                                val progressChannel = FirmwareRepository.progressChannel
-                                val progress = ProgressRepository.getItem(progressChannel.value)
-                                val progressValue = progress?.value?.value
-                                val maxValue = progress?.value?.max
-                                Log.e("Main", "Update $progressChannel, $progress")
-                                if (progressValue != null && maxValue != null) {
-                                    if (maxValue.longValue != 0L) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier
-                                                .width(32.dp)
-                                                .height(32.dp),
-                                            color = MaterialTheme.colorScheme.secondary,
-                                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                            progress = {
-                                                progressValue.longValue.toFloat() / maxValue.longValue.toFloat()
-                                            },
-                                        )
-                                    } else {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier
-                                                .width(32.dp)
-                                                .height(32.dp),
-                                            color = MaterialTheme.colorScheme.secondary,
-                                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        )
-                                    }
-                                }
-                            }, // Placeholder
-                            onClick = {
-                                if (FirmwareRepository.progressChannel.value == null) {
-                                    installFwLauncher.launch("*/*")
+                    NavigationDrawerItem(
+                        label = {
+                            Text(
+                                "Firmware: " + (FirmwareRepository.version.value ?: "None")
+                            )
+                        },
+                        selected = false,
+                        icon = { Icon(Icons.Outlined.Build, contentDescription = null) },
+                        badge = {
+                            val progressChannel = FirmwareRepository.progressChannel
+                            val progress = ProgressRepository.getItem(progressChannel.value)
+                            val progressValue = progress?.value?.value
+                            val maxValue = progress?.value?.max
+                            Log.e("Main", "Update $progressChannel, $progress")
+                            if (progressValue != null && maxValue != null) {
+                                if (maxValue.longValue != 0L) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .width(32.dp)
+                                            .height(32.dp),
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        progress = {
+                                            progressValue.longValue.toFloat() / maxValue.longValue.toFloat()
+                                        },
+                                    )
+                                } else {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier
+                                            .width(32.dp)
+                                            .height(32.dp),
+                                        color = MaterialTheme.colorScheme.secondary,
+                                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    )
                                 }
                             }
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    }
+                        }, // Placeholder
+                        onClick = {
+                            if (FirmwareRepository.progressChannel.value == null) {
+                                installFwLauncher.launch("*/*")
+                            }
+                        }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
-        ) {
-            Scaffold(
-                topBar = {
-                    CenterAlignedTopAppBar(
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            titleContentColor = MaterialTheme.colorScheme.primary,
-                        ),
-                        title = {
-                            Text(
-                                "RPCS3",
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = {
-                                scope.launch {
-                                    if (drawerState.isClosed) {
-                                        drawerState.open()
-                                    } else {
-                                        drawerState.close()
-                                    }
+        }
+    ) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    title = {
+                        Text(
+                            "RPCS3",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            scope.launch {
+                                if (drawerState.isClosed) {
+                                    drawerState.open()
+                                } else {
+                                    drawerState.close()
                                 }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Menu,
-                                    contentDescription = "Open menu"
-                                )
                             }
-                        },
-                        actions = {
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Menu,
+                                contentDescription = "Open menu"
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = dropUnlessResumed(
+                                block = navigateToSettings
+                            ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Open Settings"
+                            )
+                        }
 //                            IconButton(onClick = { /* do something */ }) {
 //                                Icon(
 //                                    imageVector = Icons.Filled.Search,
 //                                    contentDescription = null
 //                                )
 //                            }
-                        }
-                    )
-                },
-                floatingActionButton = {
-                    FloatingActionButton(
-                        onClick = { installPkgLauncher.launch("*/*") },
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Icon(Icons.Filled.Add, "Add game")
                     }
-                },
-            ) { innerPadding -> Column(modifier = Modifier.padding(innerPadding)) { GamesScreen() } }
-        }
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { installPkgLauncher.launch("*/*") },
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Icon(Icons.Filled.Add, "Add game")
+                }
+            },
+        ) { innerPadding -> Column(modifier = Modifier.padding(innerPadding)) { GamesScreen() } }
     }
 }
