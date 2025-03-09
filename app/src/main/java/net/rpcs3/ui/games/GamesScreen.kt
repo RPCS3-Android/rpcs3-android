@@ -48,6 +48,7 @@ import net.rpcs3.GameProgressType
 import net.rpcs3.GameRepository
 import net.rpcs3.ProgressRepository
 import net.rpcs3.RPCS3Activity
+import net.rpcs3.RPCS3
 import java.io.File
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -228,7 +229,8 @@ fun GamesScreen() {
         onRefresh = { 
             isRefreshing.value = true
             coroutineScope.launch {
-                delay(1000)
+                delay(300)
+                RPCS3.instance.collectGameInfo(RPCS3.rootDirectory, -1)
                 GameRepository.load()
                 games.value = GameRepository.list()
                 isRefreshing.value = false 
