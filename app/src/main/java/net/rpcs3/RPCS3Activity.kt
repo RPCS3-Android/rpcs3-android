@@ -33,6 +33,7 @@ class RPCS3Activity : Activity() {
     }
 
     private fun enableFullScreenImmersive() {
+        // TODO(Ishan09811, DHrpcs3): Implement edge to edge screen + set insets in overlay controlls to support edge to edge
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             or View.SYSTEM_UI_FLAG_FULLSCREEN
