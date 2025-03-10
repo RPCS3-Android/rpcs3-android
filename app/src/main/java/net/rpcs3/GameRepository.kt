@@ -58,7 +58,7 @@ private fun toInfo(store: GameInfoStore) =
     GameInfo(store.path, store.name.value, store.iconPath.value)
 
 class GameRepository {
-    private val games = mutableStateListOf<Game>()
+    private var games = mutableStateListOf<Game>()
 
     companion object {
         private val instance = GameRepository()
@@ -163,5 +163,9 @@ class GameRepository {
         }
 
         fun list() = instance.games
+
+        fun clear() {
+            instance.games = mutableStateListOf<Game>()
+        }
     }
 }
