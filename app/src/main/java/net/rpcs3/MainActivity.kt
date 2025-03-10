@@ -8,14 +8,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import net.rpcs3.ui.navigation.AppNavHost
+import net.rpcs3.ui.theme.AppTheme
 import kotlin.concurrent.thread
 import kotlinx.coroutines.launch
+
+private const val ACTION_USB_PERMISSION = "net.rpcs3.USB_PERMISSION"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppNavHost()
+            AppTheme(
+                dynamicColor = false
+            ) {
+                AppNavHost()
+            }
         }
 
         RPCS3.rootDirectory = applicationContext.getExternalFilesDir(null).toString()
