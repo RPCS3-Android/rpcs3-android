@@ -29,7 +29,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -241,7 +240,7 @@ fun GamesScreen() {
             isRefreshing.value = true
             coroutineScope.launch {
                 delay(300)
-                GameRepository.instance.games = mutableStateListOf<Game>()
+                GameRepository.clear()
                 RPCS3.instance.collectGameInfo(RPCS3.rootDirectory, -1)
                 GameRepository.load()
                 games.value = GameRepository.list()
