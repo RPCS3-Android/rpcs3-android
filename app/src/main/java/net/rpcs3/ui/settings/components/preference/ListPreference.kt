@@ -81,7 +81,7 @@ fun <T> SingleSelectionDialog(
         }
     }
 
-    BasePreferenceDialog(
+    BaseDialogPreference(
         onDismissRequest = { showDialog = false },
         icon = icon,
         title = title,
