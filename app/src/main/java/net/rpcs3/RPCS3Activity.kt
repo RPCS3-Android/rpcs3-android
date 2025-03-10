@@ -3,6 +3,7 @@ package net.rpcs3
 import android.app.Activity
 import android.os.Bundle
 import android.view.View
+import net.rpcs3.R
 
 class RPCS3Activity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -11,6 +12,11 @@ class RPCS3Activity : Activity() {
 
         listenUsbEvents(this)
         enableFullScreenImmersive()
+
+        binding.oscToggle.setOnClickListener { 
+            binding.padOverlay.isInvisible = !binding.padOverlay.isInvisible 
+            binding.oscToggle.setImageResource(if (binding.padOverlay.isInvisible) R.drawable.ic_osc_off else R.drawable.ic_show_osc)
+        }
 
         val surfaceView = findViewById<GraphicsFrame>(R.id.surfaceView)
         surfaceView.boot(intent.getStringExtra("path")!!)
