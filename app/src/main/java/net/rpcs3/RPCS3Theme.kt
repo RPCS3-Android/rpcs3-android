@@ -16,6 +16,7 @@ fun RPCS3Theme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+    // TODO(Ishan09811): Implement dynamic colors option whenever settings gets implemented
     val colors = if (darkTheme) darkColorScheme() else lightColorScheme()
 
     val view = LocalView.current
