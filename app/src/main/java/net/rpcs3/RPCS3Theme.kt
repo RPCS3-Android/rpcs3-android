@@ -23,8 +23,8 @@ fun RPCS3Theme(
 
     SideEffect {
         activity?.window?.apply {
-            statusBarColor = Color.TRANSPARENT
-            navigationBarColor = Color.TRANSPARENT
+            statusBarColor = android.graphics.Color.TRANSPARENT
+            navigationBarColor = android.graphics.Color.TRANSPARENT
             isNavigationBarContrastEnforced = false
             val insetsController = WindowInsetsControllerCompat(this, decorView)
             insetsController.isAppearanceLightNavigationBars = !darkTheme
