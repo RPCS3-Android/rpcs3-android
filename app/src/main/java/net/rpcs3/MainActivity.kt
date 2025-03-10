@@ -19,9 +19,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppTheme(
-                dynamicColor = false
-            ) {
+            RPCS3Theme {
                 AppNavHost()
             }
         }
