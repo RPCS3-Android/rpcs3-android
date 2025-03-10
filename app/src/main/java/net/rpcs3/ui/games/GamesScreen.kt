@@ -242,7 +242,6 @@ fun GamesScreen() {
                 delay(300)
                 GameRepository.clear()
                 RPCS3.instance.collectGameInfo(RPCS3.rootDirectory, -1)
-                GameRepository.load()
                 games.value = GameRepository.list()
                 isRefreshing.value = false 
             }
