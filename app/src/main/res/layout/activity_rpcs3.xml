@@ -22,11 +22,13 @@
         android:id="@+id/osc_toggle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|right"
-        android:layout_marginRight="10dp"
         android:background="?android:attr/actionBarItemBackground"
         android:padding="8dp"
         android:src="@drawable/ic_show_osc"
-        app:tint="#40FFFFFF"/>
+        app:tint="#40FFFFFF"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp" />
     
 </androidx.constraintlayout.widget.ConstraintLayout>
