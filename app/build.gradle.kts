@@ -37,11 +37,30 @@ android {
                 storeFile = customKeystoreFile
                 storePassword = keystorePassword
             } else {
-                println("⚠️ Custom keystore not found or empty! Using default debug keystore.")
+                println("⚠️ Custom keystore not found or empty! creating debug keystore.")
+
+                val debugKeystoreFile = file("${System.getProperty("user.home")}/debug.keystore")
+
+                if (!debugKeystoreFile.exists()) {
+                    println("⚠️ Debug keystore not found! Generating one...")
+                    Runtime.getRuntime().exec(
+                        arrayOf(
+                            "keytool", "-genkeypair",
+                            "-v", "-keystore", debugKeystoreFile.absolutePath,
+                            "-storepass", "android",
+                            "-keypass", "android",
+                            "-alias", "androiddebugkey",
+                            "-keyalg", "RSA",
+                            "-keysize", "2048",
+                            "-validity", "10000",
+                            "-dname", "CN=Android Debug,O=Android,C=US"
+                        )
+                    ).waitFor()
+                }
 
                 keyAlias = "androiddebugkey"
                 keyPassword = "android"
-                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storeFile = debugKeystoreFile
                 storePassword = "android"
             }
         }
