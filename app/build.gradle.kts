@@ -29,10 +29,21 @@ android {
             val keystorePassword = System.getenv("KEYSTORE_PASS") ?: ""
             val keystorePath = System.getenv("KEYSTORE_PATH") ?: ""
 
-            keyAlias = keystoreAlias
-            keyPassword = keystorePassword
-            storeFile = file(keystorePath)
-            storePassword = keystorePassword
+            val customKeystoreFile = file(keystorePath)
+
+            if (customKeystoreFile.exists() && customKeystoreFile.length() > 0) {
+                keyAlias = keystoreAlias
+                keyPassword = keystorePassword
+                storeFile = customKeystoreFile
+                storePassword = keystorePassword
+            } else {
+                println("⚠️ Custom keystore not found or empty! Using default debug keystore.")
+
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storePassword = "android"
+            }
         }
     }
 
