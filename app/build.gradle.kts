@@ -23,6 +23,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("custom-key") {
+            val keystoreAlias = System.getenv("KEYSTORE_ALIAS") ?: ""
+            val keystorePassword = System.getenv("KEYSTORE_PASS") ?: ""
+            val keystorePath = System.getenv("KEYSTORE_PATH") ?: ""
+
+            keyAlias = keystoreAlias
+            keyPassword = keystorePassword
+            storeFile = file(keystorePath)
+            storePassword = keystorePassword
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -30,26 +43,31 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("custom-key") ?: signingConfigs.getByName("debug")
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.31.5"
         }
     }
+
     buildFeatures {
         viewBinding = true
         compose = true
     }
+
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.15"
     }
