@@ -42,7 +42,6 @@ android {
                 val debugKeystoreFile = file("${System.getProperty("user.home")}/debug.keystore")
 
                 if (!debugKeystoreFile.exists()) {
-                    println("⚠️ Debug keystore not found! Generating one...")
                     Runtime.getRuntime().exec(
                         arrayOf(
                             "keytool", "-genkeypair",
