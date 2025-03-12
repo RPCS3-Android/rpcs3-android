@@ -93,35 +93,37 @@ fun SettingsScreen(
                     leadingIcon = { PreferenceIcon(icon = painterResource(R.drawable.ic_folder)) },
                     subtitle = { PreferenceSubtitle(text = "Open internal directory of RPCS3 in file manager") },
                 ) {
-                    context.launchBrowseIntent()
+                    if (context.launchBrowseIntent(Intent.ACTION_VIEW) or context.launchBrowseIntent()) {
+                        // No Activity found to handle action
+                    }
                 }
             }
 
             item { HorizontalDivider() }
-            item(
-                key = "firmware_installation",
-            ) {
-                RegularPreference(
-                    title = "Install Firmware",
-                    leadingIcon = Icons.Default.Build,
-                    subtitle = { PreferenceSubtitle(text = "Install PS3 Firmware") },
-                ) {
-                    firmwareFilePicker.launch("*/*")
-                }
-            }
-
-            item { HorizontalDivider() }
-            item(
-                key = "custom_driver_installation"
-            ) {
-                RegularPreference(
-                    title = "Install Custom Driver",
-                    leadingIcon = Icons.Default.Build,
-                ) {
-                    /* no-op */
-                }
-            }
-            item { HorizontalDivider() }
+//            item(
+//                key = "firmware_installation",
+//            ) {
+//                RegularPreference(
+//                    title = "Install Firmware",
+//                    leadingIcon = Icons.Default.Build,
+//                    subtitle = { PreferenceSubtitle(text = "Install PS3 Firmware") },
+//                ) {
+//                    firmwareFilePicker.launch("*/*")
+//                }
+//            }
+//
+//            item { HorizontalDivider() }
+//            item(
+//                key = "custom_driver_installation"
+//            ) {
+//                RegularPreference(
+//                    title = "Install Custom Driver",
+//                    leadingIcon = Icons.Default.Build,
+//                ) {
+//                    /* no-op */
+//                }
+//            }
+//            item { HorizontalDivider() }
         }
 
         // Create a data class with title and onClick lambda?
@@ -139,16 +141,22 @@ private fun SettingsScreenPreview() {
     }
 }
 
-private fun Context.launchBrowseIntent(): Boolean {
+private fun Context.launchBrowseIntent(
+    action: String = "android.provider.action.BROWSE"
+): Boolean {
     return try {
-        val intent = Intent("android.provider.action.BROWSE").apply {
+        val intent = Intent(action).apply {
             addCategory(Intent.CATEGORY_DEFAULT)
-            data = DocumentsContract.buildRootUri(AppDataDocumentProvider.ROOT_ID, AppDataDocumentProvider.AUTHORITY)
-            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            data = DocumentsContract.buildRootUri(
+                AppDataDocumentProvider.AUTHORITY,
+                AppDataDocumentProvider.ROOT_ID
+            )
+            addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
         startActivity(intent)
         true
     } catch (_: ActivityNotFoundException) {
+        println("No activity found to handle $action intent")
         false
     }
 }
