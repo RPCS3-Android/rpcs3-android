@@ -41,12 +41,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import net.rpcs3.FirmwareRepository
-import net.rpcs3.GameRepository
+import net.rpcs3.PrecompilerService
+import net.rpcs3.PrecompilerServiceAction
 import net.rpcs3.ProgressRepository
-import net.rpcs3.RPCS3
 import net.rpcs3.dialogs.AlertDialogQueue
 import net.rpcs3.ui.games.GamesScreen
-import kotlin.concurrent.thread
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview
@@ -67,85 +66,12 @@ fun AppNavHost() {
 
     val installPkgLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
-        onResult = { uri: Uri? ->
-            if (uri != null) {
-                val descriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")
-                val fd = descriptor?.parcelFileDescriptor?.fd
-
-                if (fd != null) {
-                    val installProgress =
-                        ProgressRepository.create(context, "Package Installation")
-                    GameRepository.createGameInstallEntry(installProgress)
-
-                    thread(isDaemon = true) {
-                        if (!RPCS3.instance.installPkgFile(fd, installProgress)) {
-                            try {
-                                ProgressRepository.onProgressEvent(installProgress, -1, 0)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                                ProgressRepository.cancel(installProgress)
-                            }
-                        }
-
-                        try {
-                            descriptor.close()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                } else {
-                    try {
-                        descriptor?.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-        }
+        onResult = { uri: Uri? -> PrecompilerService.start(context, PrecompilerServiceAction.Install, uri) }
     )
 
     val installFwLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
-        onResult = { uri: Uri? ->
-            if (uri != null) {
-                val descriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")
-                val fd = descriptor?.parcelFileDescriptor?.fd
-
-                if (fd != null) {
-                    val installProgress =
-                        ProgressRepository.create(context, "Firmware Installation") { entry ->
-                            if (entry.isFinished()) {
-                                descriptor.close()
-                                FirmwareRepository.progressChannel.value = null
-                            }
-                        }
-
-                    FirmwareRepository.progressChannel.value = installProgress
-
-                    thread(isDaemon = true) {
-                        if (!RPCS3.instance.installFw(fd, installProgress)) {
-                            try {
-                                ProgressRepository.onProgressEvent(installProgress, -1, 0)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        }
-
-                        try {
-                            descriptor.close()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
-                } else {
-                    try {
-                        descriptor?.close()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-        }
+        onResult = { uri: Uri? -> PrecompilerService.start(context, PrecompilerServiceAction.InstallFirmware, uri) }
     )
 
     MaterialTheme {

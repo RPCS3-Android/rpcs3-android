@@ -7,11 +7,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import net.rpcs3.ui.navigation.AppNavHost
 import kotlin.concurrent.thread
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private lateinit var unregisterUsbEventListener: () -> Unit
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -23,8 +24,10 @@ class MainActivity : ComponentActivity() {
             RPCS3.rootDirectory += "/"
         }
 
-        lifecycleScope.launch { GameRepository.load() }
-        FirmwareRepository.load()
+        if (!RPCS3.initialized) {
+            lifecycleScope.launch { GameRepository.load() }
+            FirmwareRepository.load()
+        }
 
         Permission.PostNotifications.requestPermission(this)
 
@@ -38,7 +41,6 @@ class MainActivity : ComponentActivity() {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
 
-            deleteNotificationChannel("rpcs3-progress")
             createNotificationChannel(channel)
         }
 
@@ -46,12 +48,16 @@ class MainActivity : ComponentActivity() {
             RPCS3.instance.startMainThreadProcessor()
         }
 
-        RPCS3.instance.initialize(RPCS3.rootDirectory)
-
-        thread {
-            RPCS3.instance.processCompilationQueue()
+        if (!RPCS3.initialized) {
+            RPCS3.instance.initialize(RPCS3.rootDirectory)
+            RPCS3.initialized = true
         }
 
-        listenUsbEvents(this)
+        unregisterUsbEventListener = listenUsbEvents(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterUsbEventListener()
     }
 }

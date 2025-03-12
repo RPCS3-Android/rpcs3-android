@@ -263,6 +263,43 @@ static std::string fix_dir_path(std::string string) {
   return string;
 }
 
+enum class FileType {
+  Unknown,
+  Pup,
+  Pkg,
+  Edat,
+  Rap,
+};
+
+static FileType getFileType(const fs::file &file) {
+  file.seek(0);
+  if (PUPHeader pupHeader; file.read(pupHeader)) {
+    if (pupHeader.magic == "SCEUF\0\0\0"_u64) {
+      return FileType::Pup;
+    }
+  }
+
+  file.seek(0);
+  if (PKGHeader pkgHeader; file.read(pkgHeader)) {
+    if (pkgHeader.pkg_magic == std::bit_cast<le_t<u32>>("\x7FPKG"_u32)) {
+      return FileType::Pkg;
+    }
+  }
+
+  file.seek(0);
+  if (NPD_HEADER npdHeader; file.read(npdHeader)) {
+    if (npdHeader.magic == "NPD\0"_u32) {
+      return FileType::Edat;
+    }
+  }
+
+  if (file.size() == 16) {
+    return FileType::Rap;
+  }
+
+  return FileType::Unknown;
+}
+
 #define MAKE_STRING(id, x) [int(localized_string_id::id)] = {x, U##x}
 
 static std::pair<std::string, std::u32string> g_strings[] = {
@@ -630,7 +667,13 @@ static void sendVshBootable(JNIEnv *env, jlong progressId) {
       }}});
 }
 
-static bool tryUnlockGame(const char *contentId) {
+static bool tryUnlockGame(const psf::registry &psf) {
+  auto contentId = psf::get_string(psf, "CONTENT_ID");
+
+  if (contentId.empty()) {
+    return true;
+  }
+
   const auto licenseDir = fmt::format(
       "%shome/%s/exdata/", rpcs3::utils::get_hdd0_dir(), Emu.GetUsr());
 
@@ -687,6 +730,9 @@ static void collectGamePaths(std::vector<std::string> &paths,
 }
 
 static std::string locateEbootPath(const std::string &root) {
+  if (std::filesystem::is_regular_file(root)) {
+    return root;
+  }
 
   for (auto suffix : {
            "/EBOOT.BIN",
@@ -706,54 +752,33 @@ static std::string locateEbootPath(const std::string &root) {
 
 static std::optional<GameInfo> fetchGameInfo(std::string path,
                                              const psf::registry &psf) {
-  auto title_id = psf::get_string(psf, "TITLE_ID");
-  auto name = psf::get_string(psf, "TITLE");
-  auto app_ver = psf::get_string(psf, "APP_VER");
-  auto version = psf::get_string(psf, "VERSION");
-  auto category = psf::get_string(psf, "CATEGORY");
-  auto fw = psf::get_string(psf, "PS3_SYSTEM_VER");
-  auto parental_lvl = psf::get_integer(psf, "PARENTAL_LEVEL", 0);
-  auto resolution = psf::get_integer(psf, "RESOLUTION", 0);
-  auto sound_format = psf::get_integer(psf, "SOUND_FORMAT", 0);
+  auto titleId = std::string(psf::get_string(psf, "TITLE_ID"));
+  auto name = std::string(psf::get_string(psf, "TITLE"));
   auto bootable = psf::get_integer(psf, "BOOTABLE", 0);
-  auto attr = psf::get_integer(psf, "ATTRIBUTE", 0);
 
-  if (!bootable || title_id.empty()) {
+  if (!bootable || titleId.empty()) {
     return {};
   }
 
-  auto rootPath =
-      rpcs3::utils::get_hdd0_dir() + "game/" + std::string(title_id) + "/";
+  auto rootPath = rpcs3::utils::get_hdd0_dir() + "game/" + titleId + "/";
 
   if (path.empty()) {
     path = rootPath;
   }
 
-  auto icon_path = path + "/ICON0.PNG";
+  auto iconPath = path + "/ICON0.PNG";
   auto movie_path = path + "/ICON1.PAM";
 
   bool isLocked = false;
 
   auto ebootPath = locateEbootPath(rootPath);
 
-  SelfAdditionalInfo info;
-
   if (!ebootPath.empty()) {
     if (fs::file eboot{ebootPath};
         eboot && eboot.size() >= 4 && eboot.read<u32>() == "SCE\0"_u32) {
-      isLocked = !decrypt_self(eboot, nullptr, &info);
+      isLocked = !decrypt_self(eboot);
     }
   }
-
-  auto npd = [&]() -> NPD_HEADER * {
-    for (auto &supplemental : info.supplemental_hdr) {
-      if (supplemental.type == 3) {
-        return &supplemental.PS3_npdrm_header.npd;
-      }
-    }
-
-    return nullptr;
-  }();
 
   int flags = 0;
 
@@ -762,17 +787,34 @@ static std::optional<GameInfo> fetchGameInfo(std::string path,
     rpcs3_android.warning("game %s is locked", rootPath);
   }
 
-  bool isTrial = std::filesystem::is_directory(rootPath + "/C00");
+  auto c00Path = rootPath + "/C00";
 
-  if (isTrial && (!npd || !tryUnlockGame(npd->content_id))) {
-    flags |= kGameFlagTrial;
-    rpcs3_android.warning("game %s is trial", rootPath);
+  bool isTrial = std::filesystem::is_directory(c00Path);
+
+  if (isTrial) {
+    if (!tryUnlockGame(psf)) {
+      flags |= kGameFlagTrial;
+      rpcs3_android.warning("game %s is trial", rootPath);
+    } else {
+      auto c00IconPath = c00Path + "/ICON0.PNG";
+      if (std::filesystem::is_regular_file(c00IconPath)) {
+        iconPath = c00IconPath;
+      }
+
+      auto c00SfoPath = c00Path + "/PARAM.SFO";
+
+      if (std::filesystem::is_regular_file(c00IconPath)) {
+        auto c00Sfo = psf::load_object(c00SfoPath);
+        titleId = psf::get_string(c00Sfo, "TITLE_ID", titleId);
+        name = psf::get_string(c00Sfo, "TITLE", name);
+      }
+    }
   }
 
   return GameInfo{
-      .path = path,
-      .name = std::string(name),
-      .iconPath = icon_path,
+      .path = std::move(path),
+      .name = std::move(name),
+      .iconPath = std::move(iconPath),
       .flags = flags,
   };
 }
@@ -1510,9 +1552,22 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
   auto rootDirStr = fix_dir_path(unwrap(env, rootDir));
 
-  g_android_executable_dir = rootDirStr;
-  g_android_config_dir = rootDirStr + "config/";
-  g_android_cache_dir = rootDirStr + "cache/";
+  if (g_android_executable_dir != rootDirStr) {
+    g_android_executable_dir = rootDirStr;
+    g_android_config_dir = rootDirStr + "config/";
+    g_android_cache_dir = rootDirStr + "cache/";
+
+    std::filesystem::create_directories(g_android_config_dir);
+    std::error_code ec;
+    // std::filesystem::remove_all(g_android_cache_dir, ec);
+    std::filesystem::create_directories(g_android_cache_dir);
+  }
+
+  if (g_initialized) {
+    return true;
+  }
+
+  g_initialized = true;
 
   if (int r = libusb_set_option(nullptr, LIBUSB_OPTION_NO_DEVICE_DISCOVERY,
                                 nullptr);
@@ -1521,76 +1576,65 @@ Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
         "libusb_set_option(LIBUSB_OPTION_NO_DEVICE_DISCOVERY) -> %d", r);
   }
 
-  if (!g_initialized) {
-    g_initialized = true;
-    logs::stored_message ver{rpcs3_android.always()};
-    ver.text = fmt::format("RPCS3 v%s", rpcs3::get_verbose_version());
+  logs::stored_message ver{rpcs3_android.always()};
+  ver.text = fmt::format("RPCS3 v%s", rpcs3::get_verbose_version());
 
-    // Write System information
-    logs::stored_message sys{rpcs3_android.always()};
-    sys.text = utils::get_system_info();
+  // Write System information
+  logs::stored_message sys{rpcs3_android.always()};
+  sys.text = utils::get_system_info();
 
-    // Write OS version
-    logs::stored_message os{rpcs3_android.always()};
-    os.text = utils::get_OS_version_string();
+  // Write OS version
+  logs::stored_message os{rpcs3_android.always()};
+  os.text = utils::get_OS_version_string();
 
-    // Write current time
-    logs::stored_message time{rpcs3_android.always()};
-    time.text =
-        fmt::format("Current Time: %s", std::chrono::system_clock::now());
+  // Write current time
+  logs::stored_message time{rpcs3_android.always()};
+  time.text = fmt::format("Current Time: %s", std::chrono::system_clock::now());
 
-    logs::set_init(
-        {std::move(ver), std::move(sys), std::move(os), std::move(time)});
+  logs::set_init(
+      {std::move(ver), std::move(sys), std::move(os), std::move(time)});
 
-    auto set_rlim = [](int resource, std::uint64_t limit) {
-      rlimit64 rlim{};
-      if (getrlimit64(resource, &rlim) != 0) {
-        rpcs3_android.error("failed to get rlimit for %d", resource);
-        return;
-      }
+  auto set_rlim = [](int resource, std::uint64_t limit) {
+    rlimit64 rlim{};
+    if (getrlimit64(resource, &rlim) != 0) {
+      rpcs3_android.error("failed to get rlimit for %d", resource);
+      return;
+    }
 
-      rlim.rlim_cur = std::min<std::size_t>(rlim.rlim_max, limit);
-      rpcs3_android.error("rlimit[%d] = %u (requested %u, max %u)", resource,
-                          rlim.rlim_cur, limit, rlim.rlim_max);
+    rlim.rlim_cur = std::min<std::size_t>(rlim.rlim_max, limit);
+    rpcs3_android.error("rlimit[%d] = %u (requested %u, max %u)", resource,
+                        rlim.rlim_cur, limit, rlim.rlim_max);
 
-      if (setrlimit64(resource, &rlim) != 0) {
-        rpcs3_android.error("failed to set rlimit for %d", resource);
-        return;
-      }
-    };
+    if (setrlimit64(resource, &rlim) != 0) {
+      rpcs3_android.error("failed to set rlimit for %d", resource);
+      return;
+    }
+  };
 
-    set_rlim(RLIMIT_MEMLOCK, 0x80000000);
-    set_rlim(RLIMIT_NOFILE, 0x10000);
-    set_rlim(RLIMIT_STACK, 128 * 1024 * 1024);
+  set_rlim(RLIMIT_MEMLOCK, 0x80000000);
+  set_rlim(RLIMIT_NOFILE, 0x10000);
+  set_rlim(RLIMIT_STACK, 128 * 1024 * 1024);
 
-    virtual_pad_handler::set_on_connect_cb(initVirtualPad);
-    setupCallbacks();
-    Emu.SetHasGui(false);
-    Emu.Init();
+  virtual_pad_handler::set_on_connect_cb(initVirtualPad);
+  setupCallbacks();
+  Emu.SetHasGui(false);
+  Emu.Init();
 
-    g_cfg_input.player1.handler.set(pad_handler::virtual_pad);
-    g_cfg_input.player1.device.from_string("Virtual");
+  g_cfg_input.player1.handler.set(pad_handler::virtual_pad);
+  g_cfg_input.player1.device.from_string("Virtual");
 
-    g_cfg_input.save("", g_cfg_input_configs.default_config);
+  g_cfg_input.save("", g_cfg_input_configs.default_config);
 
-    // g_cfg_vfs.dev_hdd0.to_string().ends_with("/")
-    g_cfg.video.resolution.set(video_resolution::_720p);
-    g_cfg.video.renderer.set(video_renderer::vulkan);
-    g_cfg.core.ppu_decoder.set(ppu_decoder_type::llvm);
-    g_cfg.core.spu_decoder.set(spu_decoder_type::llvm);
-    g_cfg.core.llvm_cpu.from_string("");
-    g_cfg.video.perf_overlay.perf_overlay_enabled.set(true);
+  // g_cfg_vfs.dev_hdd0.to_string().ends_with("/")
+  g_cfg.video.resolution.set(video_resolution::_720p);
+  g_cfg.video.renderer.set(video_renderer::vulkan);
+  g_cfg.core.ppu_decoder.set(ppu_decoder_type::llvm);
+  g_cfg.core.spu_decoder.set(spu_decoder_type::llvm);
+  g_cfg.core.llvm_cpu.from_string("");
+  g_cfg.video.perf_overlay.perf_overlay_enabled.set(true);
 
-    // g_cfg.core.llvm_cpu.from_string(fallback_cpu_detection());
-    Emulator::SaveSettings(g_cfg.to_string(), Emu.GetTitleID());
-  }
-
-  std::filesystem::create_directories(g_android_config_dir);
-  std::error_code ec;
-  // std::filesystem::remove_all(g_android_cache_dir, ec);
-  std::filesystem::create_directories(g_android_cache_dir);
-
-  Emu.Kill();
+  // g_cfg.core.llvm_cpu.from_string(fallback_cpu_detection());
+  Emulator::SaveSettings(g_cfg.to_string(), Emu.GetTitleID());
   return true;
 }
 
@@ -1773,29 +1817,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_usbDeviceEvent(
   return true;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installFw(
-    JNIEnv *env, jobject, jint fd, jlong progressId) {
+static bool installPup(JNIEnv *env, fs::file &&pup_f, jlong progressId) {
   Progress progress(env, progressId);
 
-  try {
-    if (!progress.report(0, 0)) {
-      return false;
-    }
-  } catch (...) {
-    return false;
-  }
-
-  auto pup_f = fs::file::from_native_handle(fd);
-  AtExit atExit{[&] { pup_f.release_handle(); }};
-
-  if (!pup_f) {
-    rpcs3_android.fatal("installFw: failed to open PUP");
-    progress.failure("Failed to open file");
-    return false;
-  }
-
   pup_object pup(std::move(pup_f));
-  AtExit atExit_pup{[&] { pup.file().release_handle(); }};
+  AtExit atExit{[&] { pup.file().release_handle(); }};
 
   if (static_cast<pup_error>(pup) == pup_error::hash_mismatch) {
     rpcs3_android.fatal("installFw: invalid PUP");
@@ -1904,31 +1930,15 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installFw(
 
   g_compilationQueue.push(progress,
                           g_cfg_vfs.get_dev_flash() + "/vsh/module/vsh.self");
-  // progress.success(update_filenames.size());
   return true;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installPkgFile(
-    JNIEnv *env, jobject, jint fd, jlong requestId) {
-  Progress progress(env, requestId);
-
-  try {
-    if (!progress.report(0, 0)) {
-      return false;
-    }
-  } catch (...) {
-    return false;
-  }
+static bool installPkg(JNIEnv *env, fs::file &&file, jlong progressId) {
+  Progress progress(env, progressId);
 
   std::deque<package_reader> readers;
   std::deque<std::string> bootable_paths;
-  readers.emplace_back("dummy.pkg", fs::file::from_native_handle(fd));
-
-  package_install_result result = {};
-  named_thread worker("PKG Installer", [&readers, &result, &bootable_paths] {
-    result = package_reader::extract_data(readers, bootable_paths);
-    return result.error == package_install_result::error_type::no_error;
-  });
+  readers.emplace_back("dummy.pkg", std::move(file));
 
   AtExit atExit{[&] {
     for (auto &reader : readers) {
@@ -1936,9 +1946,15 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installPkgFile(
     }
   }};
 
+  package_install_result result = {};
+  named_thread worker("PKG Installer", [&readers, &result, &bootable_paths] {
+    result = package_reader::extract_data(readers, bootable_paths);
+    return result.error == package_install_result::error_type::no_error;
+  });
+
   for (auto &reader : readers) {
     if (auto gameInfo = fetchGameInfo("", reader.get_psf())) {
-      sendGameInfo(env, requestId, {{*gameInfo}});
+      sendGameInfo(env, progressId, {{*gameInfo}});
     }
   }
 
@@ -1987,63 +2003,166 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installPkgFile(
   return true;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installKey(
-    JNIEnv *env, jobject, jint fd, jlong requestId, jstring gamePath) {
-  auto file = fs::file::from_native_handle(fd);
-  Progress progress(env, requestId);
+static bool installEdat(JNIEnv *env, fs::file &&file, jlong progressId,
+                        std::string rootPath = {}) {
+  Progress progress(env, progressId);
 
-  AtExit atExit{[&] { file.release_handle(); }};
-
-  if (file.size() == 16) {
-    auto rootPath = unwrap(env, gamePath);
-    auto ebootPath = locateEbootPath(rootPath);
-
-    std::vector<std::uint8_t> bytes;
-    if (!file.read(bytes, 16)) {
-      progress.failure("Failed to read key");
-      return false;
-    }
-
-    SelfAdditionalInfo info;
-
-    decrypt_self(fs::file(ebootPath), nullptr, &info);
-
-    auto npd = [&]() -> NPD_HEADER * {
-      for (auto &supplemental : info.supplemental_hdr) {
-        if (supplemental.type == 3) {
-          return &supplemental.PS3_npdrm_header.npd;
-        }
-      }
-
-      return nullptr;
-    }();
-
-    if (npd == nullptr) {
-      progress.failure("Failed to fetch NPDRM of SELF");
-      return false;
-    }
-
-    const auto licenseFile =
-        fmt::format("%shome/%s/exdata/%s.rap", rpcs3::utils::get_hdd0_dir(),
-                    Emu.GetUsr(), npd->content_id);
-
-    if (!fs::write_file(licenseFile,
-                        fs::open_mode::create + fs::open_mode::trunc, bytes)) {
-      progress.failure(fmt::format("Failed to write key to %s", licenseFile));
-      return false;
-    }
-
-    if (!decrypt_self(fs::file(ebootPath))) {
-      progress.failure("Provided key is invalid for selected game");
-      fs::remove_file(licenseFile);
-      return false;
-    }
-
-    collectGameInfo(env, -1, {rootPath});
-    g_compilationQueue.push(progress, std::move(ebootPath));
-    return true;
+  NPD_HEADER npdHeader;
+  if (!file.read(npdHeader)) {
+    progress.failure("Invalid EDAT file");
+    return false;
   }
 
-  progress.failure("Unsupported key type");
+  if (!rootPath.empty()) {
+    auto ebootPath = locateEbootPath(rootPath);
+    auto sfoPath = std::filesystem::path(rootPath) / "PARAM.SFO";
+
+    if (!std::filesystem::is_regular_file(sfoPath)) {
+      progress.failure("Game is broken: PARAM.SFO not found");
+      return false;
+    }
+
+    auto psf = psf::load_object(sfoPath);
+    auto contentId = psf::get_string(psf, "CONTENT_ID");
+
+    if (contentId != npdHeader.content_id) {
+      progress.failure(fmt::format("File cannot be used for this game. EDAT "
+                                   "content ID missmatch %s vs %s",
+                                   contentId, npdHeader.content_id));
+      return false;
+    }
+  }
+
+  const auto licenseFile =
+      fmt::format("%shome/%s/exdata/%s.edat", rpcs3::utils::get_hdd0_dir(),
+                  Emu.GetUsr(), npdHeader.content_id);
+
+  file.seek(0);
+
+  std::vector<std::uint8_t> bytes(file.size());
+  if (!file.read(bytes)) {
+    progress.failure("Failed to read key");
+    return false;
+  }
+
+  if (!fs::write_file(licenseFile, fs::open_mode::create + fs::open_mode::trunc,
+                      bytes)) {
+    progress.failure(fmt::format("Failed to write EDAT to %s", licenseFile));
+    return false;
+  }
+
+  if (rootPath.empty()) {
+    rootPath = rpcs3::utils::get_hdd0_dir() + "game";
+  }
+
+  collectGameInfo(env, progressId, {rootPath});
+  return true;
+}
+
+static bool installRap(JNIEnv *env, fs::file &&file, jlong progressId,
+                       const std::string &rootPath) {
+  Progress progress(env, progressId);
+
+  auto ebootPath = locateEbootPath(rootPath);
+
+  std::vector<std::uint8_t> bytes;
+  if (!file.read(bytes, 16)) {
+    progress.failure("Failed to read key");
+    return false;
+  }
+
+  SelfAdditionalInfo info;
+  decrypt_self(fs::file(ebootPath), nullptr, &info);
+
+  auto npd = [&]() -> NPD_HEADER * {
+    for (auto &supplemental : info.supplemental_hdr) {
+      if (supplemental.type == 3) {
+        return &supplemental.PS3_npdrm_header.npd;
+      }
+    }
+
+    return nullptr;
+  }();
+
+  if (npd == nullptr) {
+    progress.failure("Failed to fetch NPDRM of SELF");
+    return false;
+  }
+
+  const auto licenseFile =
+      fmt::format("%shome/%s/exdata/%s.rap", rpcs3::utils::get_hdd0_dir(),
+                  Emu.GetUsr(), npd->content_id);
+
+  if (!fs::write_file(licenseFile, fs::open_mode::create + fs::open_mode::trunc,
+                      bytes)) {
+    progress.failure(fmt::format("Failed to write key to %s", licenseFile));
+    return false;
+  }
+
+  if (!decrypt_self(fs::file(ebootPath))) {
+    progress.failure("Provided key is invalid for selected game");
+    fs::remove_file(licenseFile);
+    return false;
+  }
+
+  collectGameInfo(env, -1, {rootPath});
+  g_compilationQueue.push(progress, std::move(ebootPath));
+  return true;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installFw(
+    JNIEnv *env, jobject, jint fd, jlong progressId) {
+  return installPup(env, fs::file::from_native_handle(fd), progressId);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_net_rpcs3_RPCS3_install(JNIEnv *env, jobject, jint fd, jlong progressId) {
+  auto file = fs::file::from_native_handle(fd);
+  AtExit atExit{[&] { file.release_handle(); }};
+
+  auto type = getFileType(file);
+  file.seek(0);
+
+  switch (type) {
+  case FileType::Unknown:
+    Progress(env, progressId).failure("Unsupported file type");
+    return false;
+
+  case FileType::Pup:
+    return installPup(env, std::move(file), progressId);
+
+  case FileType::Pkg:
+    return installPkg(env, std::move(file), progressId);
+
+  case FileType::Edat:
+    return installEdat(env, std::move(file), progressId);
+
+  case FileType::Rap:
+    Progress(env, progressId)
+        .failure("RAP file cannot be preinstalled. Use lock button on "
+                 "installed game instead");
+    return false;
+  }
+
+  return true;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installKey(
+    JNIEnv *env, jobject, jint fd, jlong progressId, jstring gamePath) {
+  auto file = fs::file::from_native_handle(fd);
+  AtExit atExit{[&] { file.release_handle(); }};
+
+  auto type = getFileType(file);
+  file.seek(0);
+
+  if (type == FileType::Rap) {
+    return installRap(env, std::move(file), progressId, unwrap(env, gamePath));
+  }
+
+  if (type == FileType::Edat) {
+    return installEdat(env, std::move(file), progressId, unwrap(env, gamePath));
+  }
+
+  Progress(env, progressId).failure("Unsupported key type");
   return false;
 }

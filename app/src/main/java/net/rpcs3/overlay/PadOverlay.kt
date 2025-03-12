@@ -14,12 +14,22 @@ import kotlin.math.min
 
 private const val idleAlpha = (0.3 * 255).toInt()
 
-data class State(var digital1: Int = 0, var digital2: Int = 0, var leftStickX: Int = 127, var leftStickY: Int = 127, var rightStickX: Int = 127, var rightStickY: Int = 127)
+data class State(
+    var digital1: Int = 0,
+    var digital2: Int = 0,
+    var leftStickX: Int = 127,
+    var leftStickY: Int = 127,
+    var rightStickX: Int = 127,
+    var rightStickY: Int = 127
+)
 
 class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context, attrs) {
     private val buttons: Array<PadOverlayButton>
     private val dpad: PadOverlayDpad
     private val state = State()
+    private val leftStick: PadOverlayStick
+    private val rightStick: PadOverlayStick
+    private val sticks = arrayOf<PadOverlayStick?>(null, null)
 
     init {
         val metrics = context!!.resources.displayMetrics
@@ -73,47 +83,176 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
 
         dpad = createDpad(dpadAreaX, dpadAreaY, dpadW, dpadH)
 
-        buttons = arrayOf(
-            createButton(R.drawable.circle, btnCircleX, btnCircleY, buttonSize, buttonSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_CIRCLE),
-            createButton(R.drawable.triangle, btnTriangleX, btnTriangleY, buttonSize, buttonSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_TRIANGLE),
-            createButton(R.drawable.square, btnSquareX, btnSquareY, buttonSize, buttonSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_SQUARE),
-            createButton(R.drawable.cross, btnCrossX, btnCrossY, buttonSize, buttonSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_CROSS),
-            createButton(R.drawable.start, btnStartX, btnStartY,startSelectSize, startSelectSize, Digital1Flags.CELL_PAD_CTRL_START, Digital2Flags.None),
-            createButton(R.drawable.select, btnSelectX, btnSelectY, startSelectSize, startSelectSize, Digital1Flags.CELL_PAD_CTRL_SELECT, Digital2Flags.None),
+        leftStick = PadOverlayStick(
+            resources,
+            true,
+            BitmapFactory.decodeResource(resources, R.drawable.left_stick_background),
+            BitmapFactory.decodeResource(resources, R.drawable.left_stick)
+        )
+        rightStick = PadOverlayStick(
+            resources,
+            false,
+            BitmapFactory.decodeResource(resources, R.drawable.right_stick_background),
+            BitmapFactory.decodeResource(resources, R.drawable.right_stick)
+        )
 
-            createButton(R.drawable.l1, btnL1X, btnL1Y, startSelectSize, startSelectSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_L1),
-            createButton(R.drawable.l2, btnL2X, btnL2Y, startSelectSize, startSelectSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_L2),
-            createButton(R.drawable.r1, btnR1X, btnR1Y, startSelectSize, startSelectSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_R1),
-            createButton(R.drawable.r2, btnR2X, btnR2Y, startSelectSize, startSelectSize, Digital1Flags.None, Digital2Flags.CELL_PAD_CTRL_R2),
+        leftStick.setBounds(0, 0, buttonSize * 2, buttonSize * 2)
+        leftStick.alpha = idleAlpha
+        rightStick.setBounds(0, 0, buttonSize * 2, buttonSize * 2)
+        rightStick.alpha = idleAlpha
+
+        buttons = arrayOf(
+            createButton(
+                R.drawable.circle,
+                btnCircleX,
+                btnCircleY,
+                buttonSize,
+                buttonSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_CIRCLE
+            ),
+            createButton(
+                R.drawable.triangle,
+                btnTriangleX,
+                btnTriangleY,
+                buttonSize,
+                buttonSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_TRIANGLE
+            ),
+            createButton(
+                R.drawable.square,
+                btnSquareX,
+                btnSquareY,
+                buttonSize,
+                buttonSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_SQUARE
+            ),
+            createButton(
+                R.drawable.cross,
+                btnCrossX,
+                btnCrossY,
+                buttonSize,
+                buttonSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_CROSS
+            ),
+            createButton(
+                R.drawable.start,
+                btnStartX,
+                btnStartY,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.CELL_PAD_CTRL_START,
+                Digital2Flags.None
+            ),
+            createButton(
+                R.drawable.select,
+                btnSelectX,
+                btnSelectY,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.CELL_PAD_CTRL_SELECT,
+                Digital2Flags.None
+            ),
+
+            createButton(
+                R.drawable.l1,
+                btnL1X,
+                btnL1Y,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_L1
+            ),
+            createButton(
+                R.drawable.l2,
+                btnL2X,
+                btnL2Y,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_L2
+            ),
+            createButton(
+                R.drawable.r1,
+                btnR1X,
+                btnR1Y,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_R1
+            ),
+            createButton(
+                R.drawable.r2,
+                btnR2X,
+                btnR2Y,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.None,
+                Digital2Flags.CELL_PAD_CTRL_R2
+            ),
         )
 
         setWillNotDraw(false)
         requestFocus()
 
-        setOnTouchListener {
-            _, motionEvent ->
+        setOnTouchListener { _, motionEvent ->
             var hit = false
 
             val action = motionEvent.actionMasked
-            val pointerIndex = if (action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP) motionEvent.actionIndex else 0
+            val pointerIndex =
+                if (action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP) motionEvent.actionIndex else 0
             val x = motionEvent.getX(pointerIndex).toInt()
             val y = motionEvent.getY(pointerIndex).toInt()
-            val force = motionEvent.action == MotionEvent.ACTION_UP
+            val force = action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP
+            if (force || (motionEvent.action == MotionEvent.ACTION_MOVE || dpad.contains(
+                    x,
+                    y
+                ))
+            ) {
+                hit = dpad.onTouch(motionEvent, pointerIndex, state)
+            }
+
             buttons.forEach { button ->
-                if (force || button.contains(x, y)) {
-                    button.onTouch(motionEvent, pointerIndex, state)
+                if (force || (!hit && button.contains(x, y))) {
+                    hit = button.onTouch(motionEvent, pointerIndex, state)
+                }
+            }
+
+            for (i in sticks.indices) {
+                val stick = sticks[i] ?: continue
+                val touchResult = stick.onTouch(motionEvent, pointerIndex, state)
+                if (touchResult < 0) {
+                    sticks[i] = null
+                    hit = true
+                } else {
+                    hit = touchResult == 1
+                }
+            }
+
+            RPCS3.instance.overlayPadData(
+                state.digital1,
+                state.digital2,
+                state.leftStickX,
+                state.leftStickY,
+                state.rightStickX,
+                state.rightStickY
+            )
+
+            if (!hit && (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) && (y > buttonSize && x > buttonSize * 3)) {
+                val stickIndex = if (x <= totalWidth / 2) 0 else 1
+                val stick = if (stickIndex == 0) leftStick else rightStick
+
+                if (sticks[stickIndex] == null) {
+                    sticks[stickIndex] = stick
+                    stick.onAdd(motionEvent, pointerIndex, state)
                     hit = true
                 }
             }
 
-            if (force || motionEvent.action == MotionEvent.ACTION_MOVE || dpad.contains(x, y)) {
-                dpad.onTouch(motionEvent, pointerIndex, state)
-                hit = true
-            }
-
-            RPCS3.instance.overlayPadData(state.digital1, state.digital2, state.leftStickX, state.leftStickY, state.rightStickX, state.rightStickY)
-
-            if (hit) {
+            if (hit || force) {
                 invalidate()
             }
 
@@ -125,9 +264,18 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         super.draw(canvas)
         buttons.forEach { button -> button.draw(canvas) }
         dpad.draw(canvas)
+        sticks.forEach { it?.draw(canvas) }
     }
 
-    private fun createButton(resourceId: Int, x: Int, y: Int, width: Int, height: Int, digital1: Digital1Flags, digital2: Digital2Flags): PadOverlayButton {
+    private fun createButton(
+        resourceId: Int,
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        digital1: Digital1Flags,
+        digital2: Digital2Flags
+    ): PadOverlayButton {
         val resources = context!!.resources
         val bitmap = BitmapFactory.decodeResource(resources, resourceId)
         val result = PadOverlayButton(resources, bitmap, digital1.bit, digital2.bit)

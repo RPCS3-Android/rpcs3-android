@@ -9,13 +9,14 @@ import net.rpcs3.databinding.ActivityRpcs3Binding
 
 class RPCS3Activity : Activity() {
     private lateinit var binding: ActivityRpcs3Binding
-    
+    private lateinit var unregisterUsbEventListener: () -> Unit
+  
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityRpcs3Binding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        listenUsbEvents(this)
+        unregisterUsbEventListener = listenUsbEvents(this)
         enableFullScreenImmersive()
 
         binding.oscToggle.setOnClickListener { 
@@ -24,6 +25,11 @@ class RPCS3Activity : Activity() {
         }
 
         binding.surfaceView.boot(intent.getStringExtra("path")!!)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterUsbEventListener()
     }
 
     private fun enableFullScreenImmersive() {

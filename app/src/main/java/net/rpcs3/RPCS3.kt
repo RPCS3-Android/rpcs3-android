@@ -32,7 +32,7 @@ enum class Digital2Flags(val bit: Int)
 class RPCS3 {
     external fun initialize(rootDir: String): Boolean
     external fun installFw(fd: Int, progressId: Long): Boolean
-    external fun installPkgFile(fd: Int, progressId: Long): Boolean
+    external fun install(fd: Int, progressId: Long): Boolean
     external fun installKey(fd: Int, requestId: Long, gamePath: String): Boolean
     external fun boot(path: String): Boolean
     external fun surfaceEvent(surface: Surface, event: Int): Boolean
@@ -43,6 +43,7 @@ class RPCS3 {
     external fun collectGameInfo(rootDir: String, progressId: Long): Boolean
 
     companion object {
+        var initialized = false
         val instance = RPCS3()
         var rootDirectory: String = ""
 

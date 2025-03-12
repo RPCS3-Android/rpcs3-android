@@ -75,7 +75,7 @@ jobs:
       env: 
         CMAKE_C_COMPILER_LAUNCHER: "ccache"
         CMAKE_CXX_COMPILER_LAUNCHER: "ccache"
-      run: ./gradlew build
+      run: ./gradlew assembleRelease
 
     - name: Build release artifacts
       uses: actions/upload-artifact@v4
