@@ -188,6 +188,13 @@ fun GamesDestination(
                             AlertDialogQueue.showDialog("System Info", RPCS3.instance.systemInfo())
                         }
                     )
+
+                    NavigationDrawerItem(
+                        label = { Text("Settings") },
+                        selected = false,
+                        icon = { Icon(Icons.Default.Settings, null) },
+                        onClick = navigateToSettings
+                    )
                 }
             }
         }
@@ -222,24 +229,6 @@ fun GamesDestination(
                             )
                         }
                     },
-                    actions = {
-                        IconButton(
-                            onClick = dropUnlessResumed(
-                                block = navigateToSettings
-                            ),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Open Settings"
-                            )
-                        }
-//                            IconButton(onClick = { /* do something */ }) {
-//                                Icon(
-//                                    imageVector = Icons.Filled.Search,
-//                                    contentDescription = null
-//                                )
-//                            }
-                    }
                 )
             },
             floatingActionButton = {
