@@ -54,12 +54,20 @@ import net.rpcs3.RPCS3
 import net.rpcs3.dialogs.AlertDialogQueue
 import net.rpcs3.ui.games.GamesScreen
 import net.rpcs3.ui.settings.SettingsScreen
-import kotlin.concurrent.thread
 
 @Preview
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    BackHandler(enabled = drawerState.isOpen) {
+        scope.launch {
+            drawerState.close()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = "games"
@@ -78,12 +86,6 @@ fun AppNavHost() {
             SettingsScreen(
                 navigateBack = navController::navigateUp
             )
-        }
-    }
-
-    BackHandler(enabled = drawerState.isOpen) {
-        scope.launch {
-            drawerState.close()
         }
     }
 }
