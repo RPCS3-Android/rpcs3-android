@@ -766,50 +766,52 @@ static std::optional<GameInfo> fetchGameInfo(const psf::registry &psf) {
   bool isDiscGame = category == "DG";
 
   auto path = isDiscGame
-                  ? fs::get_config_dir() + "games/" + titleId  + "/"
+                  ? fs::get_config_dir() + "games/" + titleId + "/"
                   : rpcs3::utils::get_hdd0_dir() + "game/" + titleId + "/";
   auto dataPath = isDiscGame ? path + "PS3_GAME/" : path;
   auto iconPath = dataPath + "ICON0.PNG";
   auto moviePath = dataPath + "ICON1.PAM";
 
-  bool isLocked = false;
-
-  auto ebootPath = locateEbootPath(path);
-
-  if (!ebootPath.empty()) {
-    if (fs::file eboot{ebootPath};
-        eboot && eboot.size() >= 4 && eboot.read<u32>() == "SCE\0"_u32) {
-      isLocked = !decrypt_self(eboot);
-    }
-  }
-
   int flags = 0;
 
-  if (isLocked) {
-    flags |= kGameFlagLocked;
-    rpcs3_android.warning("game %s is locked", path);
-  }
+  if (!isDiscGame) {
+    auto ebootPath = locateEbootPath(path);
 
-  auto c00Path = path + "/C00";
+    bool isLocked = false;
 
-  bool isTrial = std::filesystem::is_directory(c00Path);
-
-  if (isTrial) {
-    if (!tryUnlockGame(psf)) {
-      flags |= kGameFlagTrial;
-      rpcs3_android.warning("game %s is trial", path);
-    } else {
-      auto c00IconPath = c00Path + "/ICON0.PNG";
-      if (std::filesystem::is_regular_file(c00IconPath)) {
-        iconPath = c00IconPath;
+    if (!ebootPath.empty()) {
+      if (fs::file eboot{ebootPath};
+          eboot && eboot.size() >= 4 && eboot.read<u32>() == "SCE\0"_u32) {
+        isLocked = !decrypt_self(eboot);
       }
+    }
 
-      auto c00SfoPath = c00Path + "/PARAM.SFO";
+    if (isLocked) {
+      flags |= kGameFlagLocked;
+      rpcs3_android.warning("game %s is locked", path);
+    }
 
-      if (std::filesystem::is_regular_file(c00IconPath)) {
-        auto c00Sfo = psf::load_object(c00SfoPath);
-        titleId = psf::get_string(c00Sfo, "TITLE_ID", titleId);
-        name = psf::get_string(c00Sfo, "TITLE", name);
+    auto c00Path = path + "/C00";
+
+    bool isTrial = std::filesystem::is_directory(c00Path);
+
+    if (isTrial) {
+      if (!tryUnlockGame(psf)) {
+        flags |= kGameFlagTrial;
+        rpcs3_android.warning("game %s is trial", path);
+      } else {
+        auto c00IconPath = c00Path + "/ICON0.PNG";
+        if (std::filesystem::is_regular_file(c00IconPath)) {
+          iconPath = c00IconPath;
+        }
+
+        auto c00SfoPath = c00Path + "/PARAM.SFO";
+
+        if (std::filesystem::is_regular_file(c00IconPath)) {
+          auto c00Sfo = psf::load_object(c00SfoPath);
+          titleId = psf::get_string(c00Sfo, "TITLE_ID", titleId);
+          name = psf::get_string(c00Sfo, "TITLE", name);
+        }
       }
     }
   }
@@ -1638,6 +1640,7 @@ Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
   g_cfg.core.ppu_decoder.set(ppu_decoder_type::llvm);
   g_cfg.core.spu_decoder.set(spu_decoder_type::llvm);
   g_cfg.core.llvm_cpu.from_string("cortex-a34");
+  g_cfg.net.net_active.set(np_internet_status::enabled);
   // g_cfg.core.llvm_cpu.from_string(fallback_cpu_detection());
   g_cfg.video.perf_overlay.perf_overlay_enabled.set(true);
 

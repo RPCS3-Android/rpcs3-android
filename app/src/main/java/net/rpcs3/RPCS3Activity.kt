@@ -8,20 +8,28 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
-import net.rpcs3.overlay.PadOverlay
+import androidx.core.view.isInvisible
+import net.rpcs3.R
+import net.rpcs3.databinding.ActivityRpcs3Binding
 
 class RPCS3Activity : Activity() {
+    private lateinit var binding: ActivityRpcs3Binding
     private lateinit var unregisterUsbEventListener: () -> Unit
-
+  
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_rpcs3)
+        binding = ActivityRpcs3Binding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         unregisterUsbEventListener = listenUsbEvents(this)
         enableFullScreenImmersive()
 
-        val surfaceView = findViewById<GraphicsFrame>(R.id.surfaceView)
-        surfaceView.boot(intent.getStringExtra("path")!!)
+        binding.oscToggle.setOnClickListener { 
+            binding.padOverlay.isInvisible = !binding.padOverlay.isInvisible 
+            binding.oscToggle.setImageResource(if (binding.padOverlay.isInvisible) R.drawable.ic_osc_off else R.drawable.ic_show_osc)
+        }
+
+        binding.surfaceView.boot(intent.getStringExtra("path")!!)
     }
 
     override fun onDestroy() {
@@ -41,8 +49,7 @@ class RPCS3Activity : Activity() {
     }
 
     private fun applyInsetsToPadOverlay() {
-        val padOverlay = findViewById<PadOverlay>(R.id.padOverlay)
-        ViewCompat.setOnApplyWindowInsetsListener(padOverlay) { view, windowInsets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.padOverlay) { view, windowInsets ->
             // I don't think we need `displayCutout` insets here as well
             // Since there is hardly any overlay overlapping with it
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())

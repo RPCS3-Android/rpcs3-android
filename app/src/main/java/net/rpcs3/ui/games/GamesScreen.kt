@@ -47,8 +47,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import net.rpcs3.FirmwareRepository
 import net.rpcs3.Game
 import net.rpcs3.GameFlag
@@ -326,10 +324,11 @@ fun GamesScreen() {
         onRefresh = {
             if (gameInProgress == null) {
                 isRefreshing.value = true
-                coroutineScope.launch {
+                thread {
                     GameRepository.clear()
-                    RPCS3.instance.collectGameInfo(RPCS3.rootDirectory, -1)
-                    delay(300)
+                    RPCS3.instance.collectGameInfo(RPCS3.rootDirectory + "/config/dev_hdd0/game", -1)
+                    RPCS3.instance.collectGameInfo(RPCS3.rootDirectory + "/config/games", -1)
+                    Thread.sleep(300)
                     isRefreshing.value = false
                 }
             }

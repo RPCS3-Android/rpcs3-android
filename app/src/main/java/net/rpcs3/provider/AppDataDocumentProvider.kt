@@ -15,7 +15,8 @@ import java.io.IOException
 
 class AppDataDocumentProvider : DocumentsProvider() {
     companion object {
-        private const val ROOT_ID = "root"
+        const val ROOT_ID = "root"
+        const val AUTHORITY = "net.rpcs3" + ".documents"
 
         private val DEFAULT_ROOT_PROJECTION = arrayOf(
             Root.COLUMN_ROOT_ID,
