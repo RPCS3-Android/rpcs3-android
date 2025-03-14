@@ -12,15 +12,22 @@ object FileUtil {
     fun installPackages(context: Context, folderUri: Uri, depth: Int = 2) {
         if (depth <= 0) return
         val rootFolder = DocumentFile.fromTreeUri(context, folderUri) ?: return
-        
-        rootFolder.listFiles().forEach {
-            val fileUri = it.uri ?: return@forEach
-            if (!it.isDirectory()) {
-                Log.d("FileUtil", "Installing package: ${fileUri}")
-                PrecompilerService.start(context, PrecompilerServiceAction.Install, fileUri)
+        val subFolders = mutableListOf<Uri>()
+
+        rootFolder.listFiles().forEach { file ->
+            val fileUri = file.uri ?: return@forEach
+            if (file.isDirectory) {
+                subFolders.add(fileUri)
             } else {
-                Log.d("FileUtil", "Entering sub directory: ${fileUri}")
-                installPackages(context, fileUri, depth - 1)
+                Log.d("FileUtil", "Installing package: $fileUri")
+                PrecompilerService.start(context, PrecompilerServiceAction.Install, fileUri)
+            }
+        }
+
+        if (depth > 0) {
+            subFolders.forEach { subFolderUri ->
+                Log.d("FileUtil", "Entering sub directory: $subFolderUri")
+                installPackages(context, subFolderUri, depth - 1)
             }
         }
     }
