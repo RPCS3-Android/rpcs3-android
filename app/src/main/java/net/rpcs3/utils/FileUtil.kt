@@ -13,12 +13,13 @@ object FileUtil {
         if (depth <= 0) return
         val rootFolder = DocumentFile.fromTreeUri(context, folderUri) ?: return
         
-        for (file in rootFolder.listFiles()) {
-            val fileUri = file.uri ?: continue
-            if (!file.isDirectory()) {
-                Log.d("Install", "Installing package: ${fileUri}")
+        rootFolder.listFiles().forEach {
+            val fileUri = it.uri ?: return
+            if (!it.isDirectory()) {
+                Log.d("FileUtil", "Installing package: ${fileUri}")
                 PrecompilerService.start(context, PrecompilerServiceAction.Install, fileUri)
             } else {
+                Log.d("FileUtil", "Entering sub directory: ${fileUri}")
                 installPackages(context, fileUri, depth - 1)
             }
         }
