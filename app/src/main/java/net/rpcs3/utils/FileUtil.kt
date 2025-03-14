@@ -15,7 +15,7 @@ object FileUtil {
         
         for (file in rootFolder.listFiles()) {
             val fileUri = file.uri ?: continue
-            if (!file.isDirectory) {
+            if (!file.isDirectory()) {
                 Log.d("Install", "Installing package: ${fileUri}")
                 PrecompilerService.start(context, PrecompilerServiceAction.Install, fileUri)
             } else {
