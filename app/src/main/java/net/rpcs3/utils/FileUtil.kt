@@ -14,11 +14,12 @@ object FileUtil {
         val rootFolder = DocumentFile.fromTreeUri(context, folderUri) ?: return
         
         for (file in rootFolder.listFiles()) {
+            val fileUri = file.uri ?: continue
             if (!file.isDirectory) {
-                Log.d("Install", "Installing package: ${file.uri}")
-                PrecompilerService.start(context, PrecompilerServiceAction.Install, file?.uri!!)
+                Log.d("Install", "Installing package: ${fileUri}")
+                PrecompilerService.start(context, PrecompilerServiceAction.Install, fileUri)
             } else {
-                installPackages(context, file?.uri!!, depth - 1)
+                installPackages(context, fileUri, depth - 1)
             }
         }
     }
