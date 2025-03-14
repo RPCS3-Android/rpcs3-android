@@ -1540,10 +1540,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_overlayPadData(
   for (auto &btn : pad->m_buttons) {
     if (btn.m_offset == CELL_PAD_BTN_OFFSET_DIGITAL1) {
       btn.m_pressed = (digital1 & btn.m_outKeyCode) != 0;
-      btn.m_value = btn.m_pressed ? 127 : 0;
+      btn.m_value = btn.m_pressed ? 255 : 0;
     } else if (btn.m_offset == CELL_PAD_BTN_OFFSET_DIGITAL2) {
       btn.m_pressed = (digital2 & btn.m_outKeyCode) != 0;
-      btn.m_value = btn.m_pressed ? 127 : 0;
+      btn.m_value = btn.m_pressed ? 255 : 0;
     }
   }
 
