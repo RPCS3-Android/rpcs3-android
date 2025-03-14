@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USB_PERMISSION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
     <uses-feature android:name="android.hardware.gamepad" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -24,7 +26,13 @@
         android:isGame="true"
         android:theme="@style/Theme.RPCS3"
         tools:targetApi="31">
-        
+
+        <service
+            android:name=".PrecompilerService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+        </service>
+
         <meta-data 
             android:name="android.game_mode_config"
             android:resource="@xml/game_config" />

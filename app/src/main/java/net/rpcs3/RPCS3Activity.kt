@@ -3,17 +3,33 @@ package net.rpcs3
 import android.app.Activity
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.isInvisible
+import net.rpcs3.R
+import net.rpcs3.databinding.ActivityRpcs3Binding
 
 class RPCS3Activity : Activity() {
+    private lateinit var binding: ActivityRpcs3Binding
+    private lateinit var unregisterUsbEventListener: () -> Unit
+  
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_rpcs3)
+        binding = ActivityRpcs3Binding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        listenUsbEvents(this)
+        unregisterUsbEventListener = listenUsbEvents(this)
         enableFullScreenImmersive()
 
-        val surfaceView = findViewById<GraphicsFrame>(R.id.surfaceView)
-        surfaceView.boot(intent.getStringExtra("path")!!)
+        binding.oscToggle.setOnClickListener { 
+            binding.padOverlay.isInvisible = !binding.padOverlay.isInvisible 
+            binding.oscToggle.setImageResource(if (binding.padOverlay.isInvisible) R.drawable.ic_osc_off else R.drawable.ic_show_osc)
+        }
+
+        binding.surfaceView.boot(intent.getStringExtra("path")!!)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterUsbEventListener()
     }
 
     private fun enableFullScreenImmersive() {

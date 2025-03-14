@@ -36,7 +36,9 @@
 #include "Utilities/StrFmt.h"
 #include "Utilities/StrUtil.h"
 #include "Utilities/Thread.h"
+#include "block_dev.hpp"
 #include "hidapi_libusb.h"
+#include "iso.hpp"
 #include "libusb.h"
 #include "rpcs3_version.h"
 #include "util/asm.hpp"
@@ -139,10 +141,6 @@ struct GraphicsFrame : GSFrameBase {
   ANativeWindow *getNativeWindow() const {
     ANativeWindow *result;
     while ((result = g_native_window.load()) == nullptr) [[unlikely]] {
-      if (activeNativeWindow != nullptr) {
-        return activeNativeWindow;
-      }
-
       if (Emu.IsStopped()) {
         return nullptr;
       }
@@ -150,7 +148,7 @@ struct GraphicsFrame : GSFrameBase {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    if (result != activeNativeWindow) {
+    if (result != activeNativeWindow) [[unlikely]] {
       ANativeWindow_acquire(result);
 
       if (activeNativeWindow != nullptr) {
@@ -269,6 +267,7 @@ enum class FileType {
   Pkg,
   Edat,
   Rap,
+  Iso,
 };
 
 static FileType getFileType(const fs::file &file) {
@@ -295,6 +294,10 @@ static FileType getFileType(const fs::file &file) {
 
   if (file.size() == 16) {
     return FileType::Rap;
+  }
+
+  if (iso_fs::open(std::make_unique<file_view_block_dev>(file))) {
+    return FileType::Iso;
   }
 
   return FileType::Unknown;
@@ -750,28 +753,28 @@ static std::string locateEbootPath(const std::string &root) {
   return {};
 }
 
-static std::optional<GameInfo> fetchGameInfo(std::string path,
-                                             const psf::registry &psf) {
+static std::optional<GameInfo> fetchGameInfo(const psf::registry &psf) {
   auto titleId = std::string(psf::get_string(psf, "TITLE_ID"));
   auto name = std::string(psf::get_string(psf, "TITLE"));
   auto bootable = psf::get_integer(psf, "BOOTABLE", 0);
+  auto category = psf::get_string(psf, "CATEGORY");
 
   if (!bootable || titleId.empty()) {
     return {};
   }
 
-  auto rootPath = rpcs3::utils::get_hdd0_dir() + "game/" + titleId + "/";
+  bool isDiscGame = category == "DG";
 
-  if (path.empty()) {
-    path = rootPath;
-  }
-
-  auto iconPath = path + "/ICON0.PNG";
-  auto movie_path = path + "/ICON1.PAM";
+  auto path = isDiscGame
+                  ? fs::get_config_dir() + "games/" + titleId  + "/"
+                  : rpcs3::utils::get_hdd0_dir() + "game/" + titleId + "/";
+  auto dataPath = isDiscGame ? path + "PS3_GAME/" : path;
+  auto iconPath = dataPath + "ICON0.PNG";
+  auto moviePath = dataPath + "ICON1.PAM";
 
   bool isLocked = false;
 
-  auto ebootPath = locateEbootPath(rootPath);
+  auto ebootPath = locateEbootPath(path);
 
   if (!ebootPath.empty()) {
     if (fs::file eboot{ebootPath};
@@ -784,17 +787,17 @@ static std::optional<GameInfo> fetchGameInfo(std::string path,
 
   if (isLocked) {
     flags |= kGameFlagLocked;
-    rpcs3_android.warning("game %s is locked", rootPath);
+    rpcs3_android.warning("game %s is locked", path);
   }
 
-  auto c00Path = rootPath + "/C00";
+  auto c00Path = path + "/C00";
 
   bool isTrial = std::filesystem::is_directory(c00Path);
 
   if (isTrial) {
     if (!tryUnlockGame(psf)) {
       flags |= kGameFlagTrial;
-      rpcs3_android.warning("game %s is trial", rootPath);
+      rpcs3_android.warning("game %s is trial", path);
     } else {
       auto c00IconPath = c00Path + "/ICON0.PNG";
       if (std::filesystem::is_regular_file(c00IconPath)) {
@@ -858,7 +861,7 @@ static void collectGameInfo(JNIEnv *env, jlong progressId,
 
     rpcs3_android.notice("collectGameInfo: sfo at %s", path);
 
-    if (auto gameInfo = fetchGameInfo(path, psf)) {
+    if (auto gameInfo = fetchGameInfo(psf)) {
       gameInfos.push_back(std::move(*gameInfo));
 
       if (gameInfos.size() >= 10) {
@@ -1237,6 +1240,9 @@ private:
         if (rootPath.filename() == "USRDIR") {
           rootPath = rootPath.parent_path();
         }
+        if (rootPath.filename() == "PS3_GAME") {
+          rootPath = rootPath.parent_path();
+        }
       }
     }
 
@@ -1534,10 +1540,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_overlayPadData(
   for (auto &btn : pad->m_buttons) {
     if (btn.m_offset == CELL_PAD_BTN_OFFSET_DIGITAL1) {
       btn.m_pressed = (digital1 & btn.m_outKeyCode) != 0;
-      btn.m_value = btn.m_pressed ? 127 : 0;
+      btn.m_value = btn.m_pressed ? 255 : 0;
     } else if (btn.m_offset == CELL_PAD_BTN_OFFSET_DIGITAL2) {
       btn.m_pressed = (digital2 & btn.m_outKeyCode) != 0;
-      btn.m_value = btn.m_pressed ? 127 : 0;
+      btn.m_value = btn.m_pressed ? 255 : 0;
     }
   }
 
@@ -1552,9 +1558,22 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
   auto rootDirStr = fix_dir_path(unwrap(env, rootDir));
 
-  g_android_executable_dir = rootDirStr;
-  g_android_config_dir = rootDirStr + "config/";
-  g_android_cache_dir = rootDirStr + "cache/";
+  if (g_android_executable_dir != rootDirStr) {
+    g_android_executable_dir = rootDirStr;
+    g_android_config_dir = rootDirStr + "config/";
+    g_android_cache_dir = rootDirStr + "cache/";
+
+    std::filesystem::create_directories(g_android_config_dir);
+    std::error_code ec;
+    // std::filesystem::remove_all(g_android_cache_dir, ec);
+    std::filesystem::create_directories(g_android_cache_dir);
+  }
+
+  if (g_initialized) {
+    return true;
+  }
+
+  g_initialized = true;
 
   if (int r = libusb_set_option(nullptr, LIBUSB_OPTION_NO_DEVICE_DISCOVERY,
                                 nullptr);
@@ -1563,76 +1582,66 @@ Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
         "libusb_set_option(LIBUSB_OPTION_NO_DEVICE_DISCOVERY) -> %d", r);
   }
 
-  if (!g_initialized) {
-    g_initialized = true;
-    logs::stored_message ver{rpcs3_android.always()};
-    ver.text = fmt::format("RPCS3 v%s", rpcs3::get_verbose_version());
+  logs::stored_message ver{rpcs3_android.always()};
+  ver.text = fmt::format("RPCS3 v%s", rpcs3::get_verbose_version());
 
-    // Write System information
-    logs::stored_message sys{rpcs3_android.always()};
-    sys.text = utils::get_system_info();
+  // Write System information
+  logs::stored_message sys{rpcs3_android.always()};
+  sys.text = utils::get_system_info();
 
-    // Write OS version
-    logs::stored_message os{rpcs3_android.always()};
-    os.text = utils::get_OS_version_string();
+  // Write OS version
+  logs::stored_message os{rpcs3_android.always()};
+  os.text = utils::get_OS_version_string();
 
-    // Write current time
-    logs::stored_message time{rpcs3_android.always()};
-    time.text =
-        fmt::format("Current Time: %s", std::chrono::system_clock::now());
+  // Write current time
+  logs::stored_message time{rpcs3_android.always()};
+  time.text = fmt::format("Current Time: %s", std::chrono::system_clock::now());
 
-    logs::set_init(
-        {std::move(ver), std::move(sys), std::move(os), std::move(time)});
+  logs::set_init(
+      {std::move(ver), std::move(sys), std::move(os), std::move(time)});
 
-    auto set_rlim = [](int resource, std::uint64_t limit) {
-      rlimit64 rlim{};
-      if (getrlimit64(resource, &rlim) != 0) {
-        rpcs3_android.error("failed to get rlimit for %d", resource);
-        return;
-      }
+  auto set_rlim = [](int resource, std::uint64_t limit) {
+    rlimit64 rlim{};
+    if (getrlimit64(resource, &rlim) != 0) {
+      rpcs3_android.error("failed to get rlimit for %d", resource);
+      return;
+    }
 
-      rlim.rlim_cur = std::min<std::size_t>(rlim.rlim_max, limit);
-      rpcs3_android.error("rlimit[%d] = %u (requested %u, max %u)", resource,
-                          rlim.rlim_cur, limit, rlim.rlim_max);
+    rlim.rlim_cur = std::min<std::size_t>(rlim.rlim_max, limit);
+    rpcs3_android.error("rlimit[%d] = %u (requested %u, max %u)", resource,
+                        rlim.rlim_cur, limit, rlim.rlim_max);
 
-      if (setrlimit64(resource, &rlim) != 0) {
-        rpcs3_android.error("failed to set rlimit for %d", resource);
-        return;
-      }
-    };
+    if (setrlimit64(resource, &rlim) != 0) {
+      rpcs3_android.error("failed to set rlimit for %d", resource);
+      return;
+    }
+  };
 
-    set_rlim(RLIMIT_MEMLOCK, 0x80000000);
-    set_rlim(RLIMIT_NOFILE, 0x10000);
-    set_rlim(RLIMIT_STACK, 128 * 1024 * 1024);
+  set_rlim(RLIMIT_MEMLOCK, 0x80000000);
+  set_rlim(RLIMIT_NOFILE, 0x10000);
+  set_rlim(RLIMIT_STACK, 128 * 1024 * 1024);
 
-    virtual_pad_handler::set_on_connect_cb(initVirtualPad);
-    setupCallbacks();
-    Emu.SetHasGui(false);
-    Emu.Init();
+  virtual_pad_handler::set_on_connect_cb(initVirtualPad);
+  setupCallbacks();
+  Emu.SetHasGui(false);
+  Emu.Init();
 
-    g_cfg_input.player1.handler.set(pad_handler::virtual_pad);
-    g_cfg_input.player1.device.from_string("Virtual");
+  g_cfg_input.player1.handler.set(pad_handler::virtual_pad);
+  g_cfg_input.player1.device.from_string("Virtual");
 
-    g_cfg_input.save("", g_cfg_input_configs.default_config);
+  g_cfg_input.save("", g_cfg_input_configs.default_config);
 
-    // g_cfg_vfs.dev_hdd0.to_string().ends_with("/")
-    g_cfg.video.resolution.set(video_resolution::_720p);
-    g_cfg.video.renderer.set(video_renderer::vulkan);
-    g_cfg.core.ppu_decoder.set(ppu_decoder_type::llvm);
-    g_cfg.core.spu_decoder.set(spu_decoder_type::llvm);
-    g_cfg.core.llvm_cpu.from_string("");
-    g_cfg.video.perf_overlay.perf_overlay_enabled.set(true);
+  // g_cfg_vfs.dev_hdd0.to_string().ends_with("/")
+  g_cfg.video.resolution.set(video_resolution::_720p);
+  g_cfg.video.renderer.set(video_renderer::vulkan);
+  g_cfg.video.shadermode.set(shader_mode::async_recompiler);
+  g_cfg.core.ppu_decoder.set(ppu_decoder_type::llvm);
+  g_cfg.core.spu_decoder.set(spu_decoder_type::llvm);
+  g_cfg.core.llvm_cpu.from_string("cortex-a34");
+  // g_cfg.core.llvm_cpu.from_string(fallback_cpu_detection());
+  g_cfg.video.perf_overlay.perf_overlay_enabled.set(true);
 
-    // g_cfg.core.llvm_cpu.from_string(fallback_cpu_detection());
-    Emulator::SaveSettings(g_cfg.to_string(), Emu.GetTitleID());
-  }
-
-  std::filesystem::create_directories(g_android_config_dir);
-  std::error_code ec;
-  // std::filesystem::remove_all(g_android_cache_dir, ec);
-  std::filesystem::create_directories(g_android_cache_dir);
-
-  Emu.Kill();
+  Emulator::SaveSettings(g_cfg.to_string(), Emu.GetTitleID());
   return true;
 }
 
@@ -1951,7 +1960,7 @@ static bool installPkg(JNIEnv *env, fs::file &&file, jlong progressId) {
   });
 
   for (auto &reader : readers) {
-    if (auto gameInfo = fetchGameInfo("", reader.get_psf())) {
+    if (auto gameInfo = fetchGameInfo(reader.get_psf())) {
       sendGameInfo(env, progressId, {{*gameInfo}});
     }
   }
@@ -2108,6 +2117,125 @@ static bool installRap(JNIEnv *env, fs::file &&file, jlong progressId,
   return true;
 }
 
+static bool installIso(JNIEnv *env, fs::file &&file, jlong progressId) {
+  auto optIso = iso_fs::open(std::make_unique<file_view_block_dev>(file));
+  Progress progress(env, progressId);
+
+  if (!optIso) {
+    progress.failure("Failed to read ISO");
+    return false;
+  }
+
+  auto iso = std::move(*optIso);
+  auto sfo_file = iso.open("PS3_GAME/PARAM.SFO");
+
+  if (!sfo_file) {
+    progress.failure("Failed to locate PARAM.SFO in ISO");
+    return false;
+  }
+
+  auto sfo = psf::load_object(sfo_file, "iso://PS3_GAME/PARAM.SFO");
+  auto title_id = psf::get_string(sfo, "TITLE_ID");
+
+  if (title_id.empty()) {
+    progress.failure("Failed to fetch TITLE_ID from PARAM.SFO in ISO");
+    return false;
+  }
+
+  if (auto gameInfo = fetchGameInfo(sfo)) {
+    sendGameInfo(env, progressId, {{*gameInfo}});
+  }
+
+  std::filesystem::path destinationPath =
+      fs::get_config_dir() + "games/" + std::string(title_id);
+  std::size_t filesCount = 0;
+
+  auto roots = [&] {
+    std::vector<std::filesystem::path> result;
+    std::vector<std::filesystem::path> workList;
+    workList.push_back({});
+    result.push_back({});
+
+    while (!workList.empty()) {
+      auto path = std::move(workList.back());
+      workList.pop_back();
+
+      for (auto entry : iso.open_dir(path)) {
+        if (entry.name == "." || entry.name == "..") {
+          continue;
+        }
+
+        if (entry.is_directory) {
+          result.push_back(path / entry.name);
+          workList.push_back(path / entry.name);
+        } else {
+          filesCount++;
+        }
+      }
+    }
+
+    return result;
+  }();
+
+  progress.report(0, filesCount);
+
+  std::size_t processedFiles = 0;
+  std::error_code ec;
+
+  for (auto &root : roots) {
+    auto rootDestPath = root.empty() ? destinationPath : destinationPath / root;
+
+    std::filesystem::create_directories(rootDestPath, ec);
+    if (ec) {
+      progress.failure(fmt::format("Failed to create dir %s: %s",
+                                   rootDestPath.string(), ec.message()));
+      return false;
+    }
+
+    for (auto entry : iso.open_dir(root)) {
+      if (entry.name == "." || entry.name == "..") {
+        continue;
+      }
+
+      auto entryDestPath = rootDestPath / entry.name;
+
+      if (entry.is_directory) {
+        std::filesystem::create_directories(entryDestPath, ec);
+        if (ec) {
+          progress.failure(fmt::format("Failed to create dir %s: %s",
+                                       entryDestPath.string(), ec.message()));
+          return false;
+        }
+
+        continue;
+      }
+      auto file = iso.open(root / entry.name);
+
+      if (!file) {
+        progress.failure(fmt::format("Failed to open file in ISO: %s",
+                                     (root / entry.name).string()));
+        return false;
+      }
+
+      if (!fs::write_file(entryDestPath,
+                          fs::open_mode::create + fs::open_mode::trunc,
+                          file.to_vector<std::uint8_t>())) {
+        progress.failure(fmt::format("Failed to write file: %s, dest %s",
+                                     entryDestPath.string(),
+                                     destinationPath.string()));
+        return false;
+      }
+
+      progress.report(processedFiles++, filesCount);
+    }
+  }
+
+  collectGameInfo(env, -1, {destinationPath});
+  auto ebootPath = locateEbootPath(destinationPath);
+  g_compilationQueue.push(progress, std::move(ebootPath));
+  return true;
+}
+
 extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installFw(
     JNIEnv *env, jobject, jint fd, jlong progressId) {
   return installPup(env, fs::file::from_native_handle(fd), progressId);
@@ -2134,6 +2262,9 @@ Java_net_rpcs3_RPCS3_install(JNIEnv *env, jobject, jint fd, jlong progressId) {
 
   case FileType::Edat:
     return installEdat(env, std::move(file), progressId);
+
+  case FileType::Iso:
+    return installIso(env, std::move(file), progressId);
 
   case FileType::Rap:
     Progress(env, progressId)
@@ -2163,4 +2294,32 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installKey(
 
   Progress(env, progressId).failure("Unsupported key type");
   return false;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
+  std::string result;
+
+  result += utils::get_system_info();
+  result += "\n";
+  result += "LLVM CPU: ";
+  result += fallback_cpu_detection();
+  result += "\n";
+
+  {
+    vk::instance device_enum_context;
+    if (device_enum_context.create("RPCS3", true)) {
+      device_enum_context.bind();
+      const std::vector<vk::physical_device> &gpus =
+          device_enum_context.enumerate_devices();
+
+      for (const auto &gpu : gpus) {
+        result += "GPU: ";
+        result += gpu.get_name();
+        result += "\n";
+      }
+    }
+  }
+
+  return wrap(env, result);
 }

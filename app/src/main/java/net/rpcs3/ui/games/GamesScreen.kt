@@ -79,46 +79,42 @@ fun GameItem(game: Game) {
     val menuExpanded = remember { mutableStateOf(false) }
     val iconExists = remember { mutableStateOf(false) }
 
-    val installKeyLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) {
-            val descriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")
-            val fd = descriptor?.parcelFileDescriptor?.fd
+    val installKeyLauncher =
+        rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
+            if (uri != null) {
+                val descriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")
+                val fd = descriptor?.parcelFileDescriptor?.fd
 
-            if (fd != null) {
-                val installProgress =
-                    ProgressRepository.create(context, "License Installation") { entry ->
-                        if (entry.isFinished()) {
-                            descriptor.close()
-                            FirmwareRepository.progressChannel.value = null
+                if (fd != null) {
+                    val installProgress =
+                        ProgressRepository.create(context, "License Installation")
+
+                    game.addProgress(GameProgress(installProgress, GameProgressType.Compile))
+
+                    thread(isDaemon = true) {
+                        if (!RPCS3.instance.installKey(fd, installProgress, game.info.path)) {
+                            try {
+                                ProgressRepository.onProgressEvent(installProgress, -1, 0)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
-                    }
 
-                game.addProgress(GameProgress(installProgress, GameProgressType.Compile))
-
-                thread(isDaemon = true) {
-                    if (!RPCS3.instance.installKey(fd, installProgress, game.info.path)) {
                         try {
-                            ProgressRepository.onProgressEvent(installProgress, -1, 0)
+                            descriptor.close()
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
                     }
-
+                } else {
                     try {
-                        descriptor.close()
+                        descriptor?.close()
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 }
-            } else {
-                try {
-                    descriptor?.close()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
             }
         }
-    }
 
     Column {
         DropdownMenu(
@@ -291,7 +287,9 @@ fun GameItem(game: Game) {
                             Icon(
                                 Icons.Outlined.Lock,
                                 contentDescription = "Game is locked",
-                                modifier = Modifier.size(30.dp).padding(7.dp)
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .padding(7.dp)
                             )
                         }
                     }

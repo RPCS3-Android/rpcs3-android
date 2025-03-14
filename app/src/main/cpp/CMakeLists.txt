@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_POSITION_INDEPENDENT_CODE on)
 
 set(FFMPEG_VERSION 5.1)
-set(LLVM_VERSION 20.1)
+set(LLVM_VERSION 19.1)
 
 if (TEST_OVERRIDE_CPU)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
@@ -86,13 +86,13 @@ add_dependencies(3rdparty_ffmpeg ffmpeg-unpack)
 if(NOT EXISTS ${CMAKE_BINARY_DIR}/llvm-${LLVM_VERSION}.tar.gz)
     message(STATUS "Downloading llvm-${LLVM_VERSION}")
     file(DOWNLOAD
-        https://github.com/RPCS3-Android/llvm-android/releases/download/${LLVM_VERSION}/llvm-${LLVM_VERSION}.0-${RPCS3_DOWNLOAD_ARCH}-Android.tar.gz
+        https://github.com/RPCS3-Android/llvm-android/releases/download/${LLVM_VERSION}/llvm-${RPCS3_DOWNLOAD_ARCH}-Android.tar.gz
         ${CMAKE_BINARY_DIR}/llvm-${LLVM_VERSION}.tar.gz
         SHOW_PROGRESS
     )
 endif()
 
-set(LLVM_DIR ${CMAKE_BINARY_DIR}/llvm-${LLVM_VERSION}.0-Android/lib/cmake/llvm)
+set(LLVM_DIR ${CMAKE_BINARY_DIR}/llvm-${LLVM_VERSION}.7-Android/lib/cmake/llvm)
 
 if (NOT EXISTS ${LLVM_DIR})
     message(STATUS "Unpacking llvm-${LLVM_VERSION}")
@@ -122,6 +122,7 @@ add_subdirectory(rpcs3 EXCLUDE_FROM_ALL)
 
 add_library(${CMAKE_PROJECT_NAME} SHARED
     native-lib.cpp
+    iso.cpp
     rpcs3/rpcs3/stb_image.cpp
     rpcs3/rpcs3/Input/ds3_pad_handler.cpp
     rpcs3/rpcs3/Input/ds4_pad_handler.cpp

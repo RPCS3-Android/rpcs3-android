@@ -28,20 +28,40 @@ class PadOverlayDpad(resources: Resources, imgIdle: Bitmap, imgTop: Bitmap, imgT
 
     fun contains(x: Int, y: Int) = drawableIdle.bounds.contains(x, y)
 
-    fun onTouch(event: MotionEvent, pointerIndex: Int, padState: State) {
+    fun onTouch(event: MotionEvent, pointerIndex: Int, padState: State): Boolean {
         val action = event.actionMasked
+        var hit = false
+
+        var activePointerIndex = pointerIndex
+
+        if (locked != -1) {
+            activePointerIndex = -1
+            for (i in 0..<event.pointerCount) {
+                if (locked == event.getPointerId(i)) {
+                    activePointerIndex = i
+                    break
+                }
+            }
+
+            if (activePointerIndex == -1) {
+                return false
+            }
+        }
 
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN || (action == MotionEvent.ACTION_MOVE && locked != -1)) {
             if (locked == -1) {
                 locked = event.getPointerId(pointerIndex)
-            } else if (locked != event.getPointerId(pointerIndex)) {
-                return
             }
 
-            val leftDistance = event.x - drawableIdle.bounds.left
-            val topDistance = event.y - drawableIdle.bounds.top
-            val bottomDistance = drawableIdle.bounds.bottom - event.y
-            val rightDistance = drawableIdle.bounds.right - event.x
+            hit = true
+
+            val x = event.getX(activePointerIndex)
+            val y = event.getY(activePointerIndex)
+
+            val leftDistance = x - drawableIdle.bounds.left
+            val topDistance = y - drawableIdle.bounds.top
+            val bottomDistance = drawableIdle.bounds.bottom - y
+            val rightDistance = drawableIdle.bounds.right - x
             val distanceWidth = drawableIdle.bounds.width() / 2.7
 
             val left = leftDistance < distanceWidth
@@ -85,6 +105,7 @@ class PadOverlayDpad(resources: Resources, imgIdle: Bitmap, imgTop: Bitmap, imgT
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
             if (event.getPointerId(pointerIndex) == locked) {
+                hit = true
                 padState.digital1 =
                     padState.digital1 and (Digital1Flags.CELL_PAD_CTRL_LEFT.bit or Digital1Flags.CELL_PAD_CTRL_UP.bit or Digital1Flags.CELL_PAD_CTRL_DOWN.bit or Digital1Flags.CELL_PAD_CTRL_RIGHT.bit).inv()
 
@@ -92,6 +113,8 @@ class PadOverlayDpad(resources: Resources, imgIdle: Bitmap, imgTop: Bitmap, imgT
                 locked = -1
             }
         }
+
+        return hit
     }
 
     fun setBounds(left: Int, top: Int, right: Int, bottom: Int) {

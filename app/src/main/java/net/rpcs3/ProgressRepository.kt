@@ -39,7 +39,7 @@ private data class ProgressWithHandler(
 
 class ProgressRepository {
     private var progressHandlers = ConcurrentHashMap<Long, ProgressWithHandler>()
-    private var nextRequestId = 0L
+    private var nextRequestId = 1L
 
     companion object {
         private val instance = ProgressRepository()
@@ -117,27 +117,19 @@ class ProgressRepository {
 
                     if (value >= 0 && max > 0) {
                         if (value == max) {
-                            with(notificationManager) {
-                                cancel(requestId.toInt())
-                            }
+                            notificationManager.cancel(requestId.toInt())
                         } else {
                             builder.setProgress(max.toInt(), value.toInt(), false)
-                            with(notificationManager) {
-                                notify(requestId.toInt(), builder.build())
-                            }
+                            notificationManager.notify(requestId.toInt(), builder.build())
                         }
                     } else if (value < 0) {
                         val contentText = text ?: "Installation failed"
                         builder.setContentText(contentText)
                         AlertDialogQueue.showDialog(title, contentText)
-                        with(notificationManager) {
-                            notify(requestId.toInt(), builder.build())
-                        }
+                        notificationManager.notify(requestId.toInt(), builder.build())
                     } else {
                         builder.setProgress(max.toInt(), value.toInt(), true)
-                        with(notificationManager) {
-                            notify(requestId.toInt(), builder.build())
-                        }
+                        notificationManager.notify(requestId.toInt(), builder.build())
                     }
                 }
 
