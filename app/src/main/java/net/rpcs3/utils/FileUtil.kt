@@ -14,7 +14,7 @@ object FileUtil {
         val rootFolder = DocumentFile.fromTreeUri(context, folderUri) ?: return
         
         rootFolder.listFiles().forEach {
-            val fileUri = it.uri ?: return
+            val fileUri = it.uri ?: return@forEach
             if (!it.isDirectory()) {
                 Log.d("FileUtil", "Installing package: ${fileUri}")
                 PrecompilerService.start(context, PrecompilerServiceAction.Install, fileUri)
