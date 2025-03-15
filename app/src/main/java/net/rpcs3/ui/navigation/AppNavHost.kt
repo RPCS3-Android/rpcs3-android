@@ -76,6 +76,7 @@ fun AppNavHost() {
             route = "games"
         ) {
             GamesDestination(
+                drawerState = drawerState,
                 navigateToSettings = { navController.navigate("settings") }
             )
         }
@@ -93,11 +94,11 @@ fun AppNavHost() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GamesDestination(
+    drawerState: androidx.compose.material3.DrawerState,
     navigateToSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
     AlertDialogQueue.AlertDialog()
 
@@ -181,19 +182,19 @@ fun GamesDestination(
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     NavigationDrawerItem(
+                        label = { Text("Settings") },
+                        selected = false,
+                        icon = { Icon(Icons.Default.Settings, null) },
+                        onClick = navigateToSettings
+                    )
+
+                    NavigationDrawerItem(
                         label = { Text("System Info") },
                         selected = false,
                         icon = { Icon(Icons.Outlined.Info, contentDescription = null) },
                         onClick = {
                             AlertDialogQueue.showDialog("System Info", RPCS3.instance.systemInfo())
                         }
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("Settings") },
-                        selected = false,
-                        icon = { Icon(Icons.Default.Settings, null) },
-                        onClick = navigateToSettings
                     )
                 }
             }
