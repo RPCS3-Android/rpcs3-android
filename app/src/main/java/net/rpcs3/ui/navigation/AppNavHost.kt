@@ -183,19 +183,19 @@ fun GamesDestination(
                     )
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     NavigationDrawerItem(
+                        label = { Text("Settings") },
+                        selected = false,
+                        icon = { Icon(Icons.Default.Settings, null) },
+                        onClick = navigateToSettings
+                    )
+
+                    NavigationDrawerItem(
                         label = { Text("System Info") },
                         selected = false,
                         icon = { Icon(Icons.Outlined.Info, contentDescription = null) },
                         onClick = {
                             AlertDialogQueue.showDialog("System Info", RPCS3.instance.systemInfo())
                         }
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("Settings") },
-                        selected = false,
-                        icon = { Icon(Icons.Default.Settings, null) },
-                        onClick = navigateToSettings
                     )
                 }
             }
