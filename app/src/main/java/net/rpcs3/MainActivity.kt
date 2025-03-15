@@ -11,7 +11,6 @@ import kotlinx.coroutines.launch
 import androidx.core.view.WindowCompat
 import net.rpcs3.ui.navigation.AppNavHost
 import kotlin.concurrent.thread
-import net.rpcs3.ui.theme.AppTheme
 
 private const val ACTION_USB_PERMISSION = "net.rpcs3.USB_PERMISSION"
 
