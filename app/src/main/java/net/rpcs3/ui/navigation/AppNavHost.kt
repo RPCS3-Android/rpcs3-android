@@ -76,7 +76,6 @@ fun AppNavHost() {
             route = "games"
         ) {
             GamesDestination(
-                scope = scope,
                 drawerState = drawerState,
                 navigateToSettings = { navController.navigate("settings") }
             )
@@ -95,11 +94,11 @@ fun AppNavHost() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GamesDestination(
-    scope: kotlinx.coroutines.CoroutineScope,
     drawerState: androidx.compose.material3.DrawerState,
     navigateToSettings: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     AlertDialogQueue.AlertDialog()
 
