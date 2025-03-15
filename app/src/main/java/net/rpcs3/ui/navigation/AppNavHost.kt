@@ -145,6 +145,8 @@ fun GamesDestination(
         onResult = { uri: Uri? ->
             uri?.let {
                 // TODO: FileUtil.saveGameFolderUri(prefs, it)
+                val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(it, takeFlags)
                 FileUtil.installPackages(context, it)
             }
         }
