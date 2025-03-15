@@ -57,6 +57,7 @@ import net.rpcs3.ui.games.GamesScreen
 import net.rpcs3.ui.settings.AdvancedSettingsScreen
 import net.rpcs3.ui.settings.SettingsScreen
 import org.json.JSONObject
+import net.rpcs3.ui.drivers.GpuDriversScreen
 
 @Preview
 @Composable
@@ -83,7 +84,8 @@ fun AppNavHost() {
         ) {
             GamesDestination(
                 drawerState = drawerState,
-                navigateToSettings = { navController.navigate("settings") }
+                navigateToSettings = { navController.navigate("settings") },
+                navigateToDrivers = { navController.navigate("drivers") }
             )
         }
 
@@ -136,7 +138,15 @@ fun AppNavHost() {
                 navigateTo = { navController.navigate(it) },
             )
         }
-
+        
+        composable(
+            route = "drivers"
+        ) {
+            GpuDriversScreen(
+                navigateBack = navController::navigateUp
+            )
+        }
+        
         unwrapSetting(settings.value)
     }
 }
@@ -145,7 +155,8 @@ fun AppNavHost() {
 @Composable
 fun GamesDestination(
     drawerState: androidx.compose.material3.DrawerState,
-    navigateToSettings: () -> Unit
+    navigateToSettings: () -> Unit,
+    navigateToDrivers: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -234,6 +245,13 @@ fun GamesDestination(
                         selected = false,
                         icon = { Icon(Icons.Default.Settings, null) },
                         onClick = navigateToSettings
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Custom GPU Drivers") },
+                        selected = false,
+                        icon = { Icon(Icons.Default.Settings, null) },
+                        onClick = navigateToDrivers
                     )
 
                     NavigationDrawerItem(
