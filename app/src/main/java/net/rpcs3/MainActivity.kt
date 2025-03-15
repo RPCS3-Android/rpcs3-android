@@ -8,9 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import androidx.core.view.WindowCompat
 import net.rpcs3.ui.navigation.AppNavHost
 import kotlin.concurrent.thread
-import net.rpcs3.ui.theme.AppTheme
 
 private const val ACTION_USB_PERMISSION = "net.rpcs3.USB_PERMISSION"
 
@@ -18,10 +18,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var unregisterUsbEventListener: () -> Unit
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
         setContent {
-            AppTheme(
-                dynamicColor = false
-            ) {
+            RPCS3Theme {
                 AppNavHost()
             }
         }
