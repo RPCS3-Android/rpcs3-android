@@ -2,6 +2,7 @@ package net.rpcs3.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.database.Cursor
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
@@ -20,7 +21,7 @@ object FileUtil {
             listFiles(currentFolderUri).forEach { item ->
                 if (item.isDirectory) {
                     workList.add(item.uri)
-                } else if (item.isFile) {
+                } else {
                     Log.d("FileUtil", "Installing package: ${item.uri}")
                     PrecompilerService.start(context, PrecompilerServiceAction.Install, item.uri)
                 }
