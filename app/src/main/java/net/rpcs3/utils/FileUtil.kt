@@ -18,7 +18,7 @@ object FileUtil {
         while (workList.isNotEmpty()) {
             val currentFolderUri = workList.removeFirst()
 
-            listFiles(currentFolderUri).forEach { item ->
+            listFiles(currentFolderUri, context).forEach { item ->
                 if (item.isDirectory) {
                     workList.add(item.uri)
                 } else {
@@ -33,7 +33,7 @@ object FileUtil {
         prefs.edit().putString("selected_game_folder", uri.toString()).apply()
     }
 
-    fun listFiles(uri: Uri): Array<SimpleDocument> {
+    fun listFiles(uri: Uri, context: Context): Array<SimpleDocument> {
         val columns = arrayOf(
             DocumentsContract.Document.COLUMN_DOCUMENT_ID,
             DocumentsContract.Document.COLUMN_DISPLAY_NAME,
@@ -61,7 +61,7 @@ object FileUtil {
         } catch (e: Exception) {
             Log.e("FileUtil", "Cannot list file error: " + e.message)
         } finally {
-            c.close()
+            c?.close()
         }
         return results.toTypedArray<SimpleDocument>()
     }
