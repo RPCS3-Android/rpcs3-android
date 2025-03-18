@@ -30,7 +30,7 @@ import net.rpcs3.ui.settings.components.core.PreferenceTitle
 fun SwitchPreference(
     checked: Boolean,
     title: @Composable () -> Unit,
-    leadingIcon: @Composable () -> Unit,
+    leadingIcon: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
     subtitle: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
@@ -60,7 +60,7 @@ fun SwitchPreference(
 fun SwitchPreference(
     checked: Boolean,
     title: String,
-    leadingIcon: ImageVector,
+    leadingIcon: ImageVector? = null,
     modifier: Modifier = Modifier,
     subtitle: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,

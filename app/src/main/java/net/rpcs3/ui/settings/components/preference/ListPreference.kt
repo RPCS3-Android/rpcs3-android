@@ -38,18 +38,18 @@ import net.rpcs3.ui.settings.components.core.PreferenceTitle
 
 @Composable
 fun <T> SingleSelectionDialog(
-    currentValue: T,
     onValueChange: (T) -> Unit,
     values: List<T>,
     title: @Composable () -> Unit,
-    icon: @Composable () -> Unit,
+    icon: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
+    currentValue: T? = null,
     enabled: Boolean = true,
     subtitle: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = {},
     valueToText: (T) -> String = { it.toString() },
     key: ((T) -> Any)? = null,
-    item: @Composable (value: T, currentValue: T, onClick: () -> Unit) -> Unit =
+    item: @Composable (value: T, currentValue: T?, onClick: () -> Unit) -> Unit =
         ListPreferenceItem(valueToText)
 ) {
     require(currentValue in values) {
@@ -64,6 +64,7 @@ fun <T> SingleSelectionDialog(
         leadingIcon = icon,
         enabled = enabled,
         subtitle = subtitle,
+        value = { Text(currentValue.toString()) },
         trailingContent = trailingContent
     ) {
         showDialog = true
@@ -104,18 +105,18 @@ fun <T> SingleSelectionDialog(
 
 @Composable
 fun <T> SingleSelectionDialog(
-    currentValue: T,
+    currentValue: T?,
     onValueChange: (T) -> Unit,
     values: List<T>,
     title: String,
-    icon: ImageVector,
+    icon: ImageVector? = null,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     subtitle: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = {},
     valueToText: (T) -> String = { it.toString() },
     key: ((T) -> Any)? = null,
-    item: @Composable (value: T, currentValue: T, onClick: () -> Unit) -> Unit =
+    item: @Composable (value: T, currentValue: T?, onClick: () -> Unit) -> Unit =
         ListPreferenceItem(valueToText)
 ) {
     SingleSelectionDialog(
@@ -136,7 +137,7 @@ fun <T> SingleSelectionDialog(
 
 fun <T> ListPreferenceItem(
     valueToText: (T) -> String
-): @Composable (T, T, () -> Unit) -> Unit = { value, currentValue, onClick ->
+): @Composable (T, T?, () -> Unit) -> Unit = { value, currentValue, onClick ->
     DialogPreferenceItem(
         value = value,
         currentValue = currentValue,
@@ -148,7 +149,7 @@ fun <T> ListPreferenceItem(
 @Composable
 private fun <T> DialogPreferenceItem(
     value: T,
-    currentValue: T,
+    currentValue: T?,
     valueToText: (T) -> String,
     onClick: () -> Unit
 ) {

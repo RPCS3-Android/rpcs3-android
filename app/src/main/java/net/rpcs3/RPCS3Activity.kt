@@ -3,8 +3,6 @@ package net.rpcs3
 import android.app.Activity
 import android.os.Bundle
 import android.view.ViewGroup.MarginLayoutParams
-import android.view.WindowInsets
-import android.view.WindowManager
 import android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -12,7 +10,6 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.isInvisible
-import net.rpcs3.R
 import net.rpcs3.databinding.ActivityRpcs3Binding
 
 class RPCS3Activity : Activity() {

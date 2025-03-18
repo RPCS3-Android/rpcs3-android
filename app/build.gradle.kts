@@ -53,6 +53,11 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.15"
     }
+
+    packaging {
+        // This is necessary for libadrenotools custom driver loading
+        jniLibs.useLegacyPackaging = true
+    }
 }
 
 base.archivesName = "rpcs3"

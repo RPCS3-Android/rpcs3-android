@@ -1242,9 +1242,6 @@ private:
         if (rootPath.filename() == "USRDIR") {
           rootPath = rootPath.parent_path();
         }
-        if (rootPath.filename() == "PS3_GAME") {
-          rootPath = rootPath.parent_path();
-        }
       }
     }
 
@@ -1619,9 +1616,10 @@ Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
     }
   };
 
-  set_rlim(RLIMIT_MEMLOCK, 0x80000000);
-  set_rlim(RLIMIT_NOFILE, 0x10000);
+  set_rlim(RLIMIT_MEMLOCK, RLIM_INFINITY);
+  set_rlim(RLIMIT_NOFILE, RLIM_INFINITY);
   set_rlim(RLIMIT_STACK, 128 * 1024 * 1024);
+  set_rlim(RLIMIT_AS, RLIM_INFINITY);
 
   virtual_pad_handler::set_on_connect_cb(initVirtualPad);
   setupCallbacks();
@@ -2167,6 +2165,9 @@ static bool installIso(JNIEnv *env, fs::file &&file, jlong progressId) {
         if (entry.name == "." || entry.name == "..") {
           continue;
         }
+        if (entry.name == "PS3_UPDATE" && path.empty()) {
+          continue;
+        }
 
         if (entry.is_directory) {
           result.push_back(path / entry.name);
@@ -2311,7 +2312,7 @@ Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
 
   {
     vk::instance device_enum_context;
-    if (device_enum_context.create("RPCS3", true)) {
+    if (device_enum_context.create("RPCS3")) {
       device_enum_context.bind();
       const std::vector<vk::physical_device> &gpus =
           device_enum_context.enumerate_devices();
@@ -2320,9 +2321,97 @@ Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
         result += "GPU: ";
         result += gpu.get_name();
         result += "\n";
+        result += "  Driver: ";
+        result += gpu.get_driver_name();
+        result += " v";
+        result += gpu.get_driver_version();
+        result += "\n";
+        result += "  Vulkan: ";
+        result += gpu.get_driver_vk_version();
+        result += "\n";
       }
     }
   }
 
   return wrap(env, result);
 }
+
+static cfg::_base *find_cfg_node(cfg::_base *root, std::string_view path) {
+  auto pathList = fmt::split(path, {"@@"});
+  std::ranges::reverse(pathList);
+
+  while (!pathList.empty()) {
+    auto elem = pathList.back();
+    pathList.pop_back();
+    if (elem.empty()) {
+      continue;
+    }
+
+    auto root_node = dynamic_cast<cfg::node *>(root);
+    if (root_node == nullptr) {
+      return nullptr;
+    }
+
+    cfg::_base *child_node = nullptr;
+
+    for (auto node : root_node->get_nodes()) {
+      if (node->get_name() == elem) {
+        child_node = node;
+        break;
+      }
+    }
+
+    if (child_node == nullptr) {
+      return nullptr;
+    }
+
+    root = child_node;
+  }
+
+  return root;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_net_rpcs3_RPCS3_settingsGet(JNIEnv *env, jobject, jstring jpath) {
+  auto root = find_cfg_node(&g_cfg, unwrap(env, jpath));
+
+  if (root == nullptr) {
+    return nullptr;
+  }
+
+  return wrap(env, root->to_json().dump(4));
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_settingsSet(
+    JNIEnv *env, jobject, jstring jpath, jstring jvalue) {
+  nlohmann::json value;
+  try {
+    value = nlohmann::json::parse(unwrap(env, jvalue));
+  } catch (...) {
+    rpcs3_android.error("settingsSet: node %s passed with invalid json '%s'", unwrap(env, jpath), unwrap(env, jvalue));
+    return false;
+  }
+
+  auto root = find_cfg_node(&g_cfg, unwrap(env, jpath));
+
+  if (root == nullptr) {
+    rpcs3_android.error("settingsSet: node %s not found", unwrap(env, jpath));
+    return false;
+  }
+
+  if (!root->from_json(value, !Emu.IsStopped())) {
+    rpcs3_android.error("settingsSet: node %s not accepts value '%s'", unwrap(env, jpath), value.dump());
+    return false;
+  }
+
+  Emulator::SaveSettings(g_cfg.to_string(), "");
+  return true;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_supportsCustomDriverLoading(JNIEnv *env, jobject instance) {
+  return access("/dev/kgsl-3d0", F_OK) == 0;
+}
+
+// extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_utils_GpuDriverHelper_forceMaxGpuClocks(JNIEnv *env, jobject instance, jboolean enable) {
+//     adrenotools_set_turbo(enable);
+// }
