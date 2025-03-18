@@ -59,6 +59,7 @@ fun BasePreference(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     subContent: @Composable (() -> Unit)? = null,
+    value: @Composable (() -> Unit)? = null,
     leadingContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     shape: Shape = MaterialTheme.shapes.medium,
@@ -94,6 +95,7 @@ fun BasePreference(
                 ) {
                     title()
                     subContent?.invoke()
+                    value?.invoke()
                 }
                 trailingContent?.invoke()
             }

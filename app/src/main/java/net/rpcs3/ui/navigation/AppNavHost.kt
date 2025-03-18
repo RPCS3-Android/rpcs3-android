@@ -84,8 +84,7 @@ fun AppNavHost() {
         ) {
             GamesDestination(
                 drawerState = drawerState,
-                navigateToSettings = { navController.navigate("settings") },
-                navigateToDrivers = { navController.navigate("drivers") }
+                navigateToSettings = { navController.navigate("settings") }
             )
         }
 
@@ -155,8 +154,7 @@ fun AppNavHost() {
 @Composable
 fun GamesDestination(
     drawerState: androidx.compose.material3.DrawerState,
-    navigateToSettings: () -> Unit,
-    navigateToDrivers: () -> Unit
+    navigateToSettings: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -245,13 +243,6 @@ fun GamesDestination(
                         selected = false,
                         icon = { Icon(Icons.Default.Settings, null) },
                         onClick = navigateToSettings
-                    )
-
-                    NavigationDrawerItem(
-                        label = { Text("Custom GPU Drivers") },
-                        selected = false,
-                        icon = { Icon(Icons.Default.Settings, null) },
-                        onClick = navigateToDrivers
                     )
 
                     NavigationDrawerItem(

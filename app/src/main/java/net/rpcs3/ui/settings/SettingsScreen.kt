@@ -12,9 +12,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,6 +48,7 @@ import net.rpcs3.ui.settings.components.core.PreferenceTitle
 import net.rpcs3.ui.settings.components.preference.RegularPreference
 import net.rpcs3.ui.settings.components.preference.SingleSelectionDialog
 import net.rpcs3.ui.settings.components.preference.SwitchPreference
+import net.rpcs3.ui.settings.components.preference.HomePreference
 import org.json.JSONObject
 
 
@@ -94,7 +98,7 @@ fun AdvancedSettingsScreen(
                              null -> {
                                 RegularPreference(
                                     title = key,
-                                    leadingIcon = Icons.Default.Settings
+                                    leadingIcon = null
                                 ) {
                                     Log.e("Main", "Navigate to settings$itemPath, object $itemObject")
                                     navigateTo("settings$itemPath")
@@ -106,7 +110,7 @@ fun AdvancedSettingsScreen(
                                 SwitchPreference (
                                     checked = itemValue,
                                     title = key,
-                                    leadingIcon = Icons.Default.Settings
+                                    leadingIcon = null
                                 ) { value ->
                                     if (!RPCS3.instance.settingsSet(itemPath, if (value) "true" else "false")) {
                                         AlertDialogQueue.showDialog("Setting error", "Failed to assign $itemPath value $value")
@@ -128,7 +132,7 @@ fun AdvancedSettingsScreen(
                                 SingleSelectionDialog(
                                     currentValue = if (itemValue in variants) itemValue else variants[0],
                                     values = variants,
-                                    icon = Icons.Default.Settings,
+                                    icon = null,
                                     title = key,
                                     onValueChange = {
                                             value ->
@@ -195,17 +199,18 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding),
-        ) {
-            // We can LazyList DSL for each preference later
-            // We can also put the HorizontalDivider into the
-            // DSL overload instead of adding manually
+        ) {    
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
             item(
                 key = "internal_directory"
             ) {
-                RegularPreference(
-                    title = { PreferenceTitle(title = "View Internal Directory") },
-                    leadingIcon = { PreferenceIcon(icon = painterResource(R.drawable.ic_folder)) },
-                    subtitle = { PreferenceSubtitle(text = "Open internal directory of RPCS3 in file manager") },
+                HomePreference(
+                    title = "View Internal Directory",
+                    icon = { PreferenceIcon(icon = painterResource(R.drawable.ic_folder)) },
+                    description = "Open internal directory of RPCS3 in file manager"
                 ) {
                     if (context.launchBrowseIntent(Intent.ACTION_VIEW) or context.launchBrowseIntent()) {
                         // No Activity found to handle action
@@ -213,43 +218,33 @@ fun SettingsScreen(
                 }
             }
 
-            item { HorizontalDivider() }
-
             item(key = "advanced_settings") {
-                RegularPreference(title = "Advanced Settings", leadingIcon = Icons.Default.Settings) {
+                HomePreference(title = "Advanced Settings", icon = { Icon(imageVector = Icons.Default.Settings, null) }, description = "Configure emulator advanced settings") {
                     navigateTo("settings@@$")
                 }
             }
-//            item(
-//                key = "firmware_installation",
-//            ) {
-//                RegularPreference(
-//                    title = "Install Firmware",
-//                    leadingIcon = Icons.Default.Build,
-//                    subtitle = { PreferenceSubtitle(text = "Install PS3 Firmware") },
-//                ) {
-//                    firmwareFilePicker.launch("*/*")
-//                }
-//            }
-//
-//            item { HorizontalDivider() }
-//            item(
-//                key = "custom_driver_installation"
-//            ) {
-//                RegularPreference(
-//                    title = "Install Custom Driver",
-//                    leadingIcon = Icons.Default.Build,
-//                ) {
-//                    /* no-op */
-//                }
-//            }
-//            item { HorizontalDivider() }
+            
+            item(
+                key = "custom_gpu_driver"
+            ) {
+                HomePreference(
+                    title = "Custom GPU Driver",
+                    icon = { Icon(Icons.Outlined.Build, contentDescription = null) },
+                    description = "Install alternative drivers for potentially better performance or accuracy"
+                ) {
+                    if (RPCS3.instance.supportsCustomDriverLoading()) {
+                        navigateTo("drivers")
+                    } else {
+                        AlertDialogQueue.showDialog(
+                            title = "Custom drivers not supported",
+                            message = "Custom driver loading isn't currently supported for this device",
+                            confirmText = "Close",
+                            dismissText = ""
+                        )
+                    }
+                }
+            }
         }
-
-        // Create a data class with title and onClick lambda?
-//        val items: List<String> =
-//            remember { mutableListOf("Install Firmware", "Install custom driver") }
-
     }
 }
 

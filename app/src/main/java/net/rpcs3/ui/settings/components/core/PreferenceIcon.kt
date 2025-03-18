@@ -21,32 +21,36 @@ import net.rpcs3.ui.settings.util.sizeIn
 
 @Composable
 fun PreferenceIcon(
-    icon: ImageVector,
+    icon: ImageVector?,
     modifier: Modifier = Modifier,
     enabled: Boolean = LocalPreferenceState.current,
     contentDescription: String? = null,
     tint: Color = preferenceColor(enabled, LocalContentColor.current),
 ) {
-    Icon(
-        imageVector = icon,
-        modifier = modifier.sizeIn(minSize = 24.dp, maxSize = 48.dp),
-        contentDescription = contentDescription,
-        tint = tint
-    )
+    if (icon != null) {
+        Icon(
+            imageVector = icon,
+            modifier = modifier.sizeIn(minSize = 24.dp, maxSize = 48.dp),
+            contentDescription = contentDescription,
+            tint = tint
+        )
+    }
 }
 
 @Composable
 fun PreferenceIcon(
-    icon: Painter,
+    icon: Painter?,
     modifier: Modifier = Modifier,
     enabled: Boolean = LocalPreferenceState.current,
     contentDescription: String? = null,
     tint: Color = preferenceColor(enabled, LocalContentColor.current),
 ) {
-    Icon(
-        painter = icon,
-        modifier = modifier.sizeIn(minSize = 24.dp, maxSize = 48.dp),
-        contentDescription = contentDescription,
-        tint = tint
-    )
+    if (icon != null) {
+        Icon(
+            painter = icon,
+            modifier = modifier.sizeIn(minSize = 24.dp, maxSize = 48.dp),
+            contentDescription = contentDescription,
+            tint = tint
+        )
+    }
 }

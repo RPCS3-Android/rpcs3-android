@@ -41,12 +41,12 @@ fun <T> SingleSelectionDialog(
     onValueChange: (T) -> Unit,
     values: List<T>,
     title: @Composable () -> Unit,
-    icon: @Composable () -> Unit,
+    icon: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
     currentValue: T? = null,
     enabled: Boolean = true,
     subtitle: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = if (currentValue != null) ({ Text(currentValue.toString()) }) else null,
+    trailingContent: @Composable (() -> Unit)? = {},
     valueToText: (T) -> String = { it.toString() },
     key: ((T) -> Any)? = null,
     item: @Composable (value: T, currentValue: T?, onClick: () -> Unit) -> Unit =
@@ -64,6 +64,7 @@ fun <T> SingleSelectionDialog(
         leadingIcon = icon,
         enabled = enabled,
         subtitle = subtitle,
+        value = { Text(currentValue.toString()) },
         trailingContent = trailingContent
     ) {
         showDialog = true
@@ -108,11 +109,11 @@ fun <T> SingleSelectionDialog(
     onValueChange: (T) -> Unit,
     values: List<T>,
     title: String,
-    icon: ImageVector,
+    icon: ImageVector? = null,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     subtitle: @Composable (() -> Unit)? = null,
-    trailingContent: @Composable (() -> Unit)? = if (currentValue != null) ({ Text(currentValue.toString()) }) else null,
+    trailingContent: @Composable (() -> Unit)? = {},
     valueToText: (T) -> String = { it.toString() },
     key: ((T) -> Any)? = null,
     item: @Composable (value: T, currentValue: T?, onClick: () -> Unit) -> Unit =
