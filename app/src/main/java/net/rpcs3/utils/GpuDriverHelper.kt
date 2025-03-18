@@ -1,4 +1,3 @@
-
 package net.rpcs3.utils
 
 import android.content.Context
@@ -16,16 +15,12 @@ private const val GPU_DRIVER_META_FILE = "meta.json"
 private const val TAG = "GPUDriverHelper"
 
 object GpuDriverHelper {
-  
-    external fun supportsCustomDriverLoading() : Boolean
-    external fun forceMaxGpuClocks(enable : Boolean)
-
-    fun getInstalledDrivers(context : Context) : Map<File, GpuDriverMetadata> {
+    fun getInstalledDrivers(context: Context): Map<File, GpuDriverMetadata> {
         val gpuDriverDir = getDriversDirectory(context)
 
         // A map between the driver location and its metadata
         val driverMap = mutableMapOf<File, GpuDriverMetadata>()
-        driverMap[File("/system/vendor")] = getSystemDriverMetadata(context)
+        driverMap[File("/system/vendor")] = getSystemDriverMetadata()
 
         gpuDriverDir.listFiles()?.forEach { entry ->
             // Delete any files that aren't a directory
@@ -43,17 +38,20 @@ object GpuDriverHelper {
 
             try {
                 driverMap[entry] = GpuDriverMetadata.deserialize(metadataFile)
-            } catch (e : SerializationException) {
-                Log.w(TAG, "Failed to load gpu driver metadata for ${entry.name}, skipping\n${e.message}")
+            } catch (e: SerializationException) {
+                Log.w(
+                    TAG,
+                    "Failed to load gpu driver metadata for ${entry.name}, skipping\n${e.message}"
+                )
             }
         }
 
         return driverMap
     }
 
-    fun getSystemDriverMetadata(context : Context) : GpuDriverMetadata {
+    private fun getSystemDriverMetadata(): GpuDriverMetadata {
         return GpuDriverMetadata(
-            name = "System Driver",
+            name = "Default",
             author = "",
             packageVersion = "",
             vendor = "",
@@ -64,14 +62,15 @@ object GpuDriverHelper {
         )
     }
 
-    fun installDriver(context : Context, stream : InputStream) : GpuDriverInstallResult {
-        val installTempDir = File(context.cacheDir.canonicalPath, GPU_DRIVER_INSTALL_TEMP_DIR).apply {
-            deleteRecursively()
-        }
+    fun installDriver(context: Context, stream: InputStream): GpuDriverInstallResult {
+        val installTempDir =
+            File(context.cacheDir.canonicalPath, GPU_DRIVER_INSTALL_TEMP_DIR).apply {
+                deleteRecursively()
+            }
 
         try {
             ZipUtil.unzip(stream, installTempDir)
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             installTempDir.deleteRecursively()
             return GpuDriverInstallResult.InvalidArchive
@@ -80,14 +79,15 @@ object GpuDriverHelper {
         return installUnpackedDriver(context, installTempDir)
     }
 
-    fun installDriver(context : Context, file : File) : GpuDriverInstallResult {
-        val installTempDir = File(context.cacheDir.canonicalPath, GPU_DRIVER_INSTALL_TEMP_DIR).apply {
-            deleteRecursively()
-        }
+    fun installDriver(context: Context, file: File): GpuDriverInstallResult {
+        val installTempDir =
+            File(context.cacheDir.canonicalPath, GPU_DRIVER_INSTALL_TEMP_DIR).apply {
+                deleteRecursively()
+            }
 
         try {
             ZipUtil.unzip(file, installTempDir)
-        } catch (e : Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             installTempDir.deleteRecursively()
             return GpuDriverInstallResult.InvalidArchive
@@ -96,7 +96,7 @@ object GpuDriverHelper {
         return installUnpackedDriver(context, installTempDir)
     }
 
-    private fun installUnpackedDriver(context : Context, unpackDir : File) : GpuDriverInstallResult {
+    private fun installUnpackedDriver(context: Context, unpackDir: File): GpuDriverInstallResult {
         val cleanup = {
             unpackDir.deleteRecursively()
         }
@@ -111,7 +111,7 @@ object GpuDriverHelper {
         // Check that the driver metadata is valid
         val driverMetadata = try {
             GpuDriverMetadata.deserialize(metadataFile)
-        } catch (e : SerializationException) {
+        } catch (e: SerializationException) {
             cleanup()
             return GpuDriverInstallResult.InvalidMetadata
         }
@@ -139,18 +139,21 @@ object GpuDriverHelper {
         return GpuDriverInstallResult.Success
     }
 
-    fun getLibraryName(context : Context, driverLabel : String) : String {
+    fun getLibraryName(context: Context, driverLabel: String): String {
         val driverDir = File(getDriversDirectory(context), driverLabel)
         val metadataFile = File(driverDir, GPU_DRIVER_META_FILE)
         return try {
             GpuDriverMetadata.deserialize(metadataFile).libraryName
-        } catch (e : SerializationException) {
-            Log.w(TAG, "Failed to load library name for driver ${driverLabel}, driver may not exist or have invalid metadata")
+        } catch (e: SerializationException) {
+            Log.w(
+                TAG,
+                "Failed to load library name for driver ${driverLabel}, driver may not exist or have invalid metadata"
+            )
             ""
         }
     }
 
-    fun ensureFileRedirectDir(context : Context) {
+    fun ensureFileRedirectDir(context: Context) {
         File(context.getExternalFilesDir(null), GPU_DRIVER_FILE_REDIRECT_DIR).apply {
             if (!isDirectory) {
                 delete()
@@ -159,15 +162,16 @@ object GpuDriverHelper {
         }
     }
 
-    private fun getDriversDirectory(context : Context) = File(context.filesDir.canonicalPath, GPU_DRIVER_DIRECTORY).apply {
-        // Create the directory if it doesn't exist
-        if (!isDirectory) {
-            delete()
-            mkdirs()
+    private fun getDriversDirectory(context: Context) =
+        File(context.filesDir.canonicalPath, GPU_DRIVER_DIRECTORY).apply {
+            // Create the directory if it doesn't exist
+            if (!isDirectory) {
+                delete()
+                mkdirs()
+            }
         }
-    }
 
-    fun resolveInstallResultToString(result : GpuDriverInstallResult) = when (result) {
+    fun resolveInstallResultToString(result: GpuDriverInstallResult) = when (result) {
         GpuDriverInstallResult.Success -> "Successfully installed GPU driver"
         GpuDriverInstallResult.InvalidArchive -> "Invalid GPU driver archive"
         GpuDriverInstallResult.MissingMetadata -> "Selected driver's metadata is missing"
@@ -178,10 +182,5 @@ object GpuDriverHelper {
 }
 
 enum class GpuDriverInstallResult {
-    Success,
-    InvalidArchive,
-    MissingMetadata,
-    InvalidMetadata,
-    UnsupportedAndroidVersion,
-    AlreadyInstalled,
+    Success, InvalidArchive, MissingMetadata, InvalidMetadata, UnsupportedAndroidVersion, AlreadyInstalled,
 }

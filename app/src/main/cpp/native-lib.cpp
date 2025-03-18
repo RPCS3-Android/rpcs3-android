@@ -2311,7 +2311,7 @@ Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
 
   {
     vk::instance device_enum_context;
-    if (device_enum_context.create("RPCS3", true)) {
+    if (device_enum_context.create("RPCS3")) {
       device_enum_context.bind();
       const std::vector<vk::physical_device> &gpus =
           device_enum_context.enumerate_devices();
@@ -2319,6 +2319,14 @@ Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
       for (const auto &gpu : gpus) {
         result += "GPU: ";
         result += gpu.get_name();
+        result += "\n";
+        result += "  Driver: ";
+        result += gpu.get_driver_name();
+        result += " v";
+        result += gpu.get_driver_version();
+        result += "\n";
+        result += "  Vulkan: ";
+        result += gpu.get_driver_vk_version();
         result += "\n";
       }
     }
@@ -2390,16 +2398,16 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_settingsSet(
     return false;
   }
 
-  if (root->from_json(value, !Emu.IsStopped())) {
+  if (!root->from_json(value, !Emu.IsStopped())) {
     rpcs3_android.error("settingsSet: node %s not accepts value '%s'", unwrap(env, jpath), value.dump());
-    Emulator::SaveSettings(g_cfg.to_string(), "");
-    return true;
+    return false;
   }
 
-  return false;
+  Emulator::SaveSettings(g_cfg.to_string(), "");
+  return true;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_utils_GpuDriverHelper_supportsCustomDriverLoading(JNIEnv *env, jobject instance) {
+extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_supportsCustomDriverLoading(JNIEnv *env, jobject instance) {
   return access("/dev/kgsl-3d0", F_OK) == 0;
 }
 
