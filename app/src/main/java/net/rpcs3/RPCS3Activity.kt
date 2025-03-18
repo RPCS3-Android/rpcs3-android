@@ -3,6 +3,9 @@ package net.rpcs3
 import android.app.Activity
 import android.os.Bundle
 import android.view.ViewGroup.MarginLayoutParams
+import android.view.WindowInsets
+import android.view.WindowManager
+import android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -38,12 +41,14 @@ class RPCS3Activity : Activity() {
     }
 
     private fun enableFullScreenImmersive() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val insetsController = WindowInsetsControllerCompat(window, window.decorView)
-        with(insetsController) {
-            // System Bars include status, navigation and caption bars.
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        with(window) {
+            WindowCompat.setDecorFitsSystemWindows(this, false)
+            val insetsController = WindowInsetsControllerCompat(this, decorView)
+            insetsController.apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+            attributes.layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
         applyInsetsToPadOverlay()
     }
