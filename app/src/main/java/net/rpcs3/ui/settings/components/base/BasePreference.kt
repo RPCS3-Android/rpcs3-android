@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -65,7 +67,7 @@ fun BasePreference(
     value: @Composable (() -> Unit)? = null,
     leadingContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
-    shape: Shape = MaterialTheme.shapes.medium,
+    shape: Shape = RoundedCornerShape(0),
     tonalElevation: Dp = 0.dp,
     shadowElevation: Dp = 0.dp,
     enabled: Boolean = true,
@@ -90,7 +92,8 @@ fun BasePreference(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(all = 12.dp),
+                    .padding(horizontal = 16.dp)
+                    .heightIn(min = 72.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

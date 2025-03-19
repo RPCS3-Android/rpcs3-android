@@ -45,6 +45,7 @@ import net.rpcs3.dialogs.AlertDialogQueue
 import net.rpcs3.provider.AppDataDocumentProvider
 import net.rpcs3.ui.common.ComposePreview
 import net.rpcs3.ui.settings.components.core.PreferenceIcon
+import net.rpcs3.ui.settings.components.core.PreferenceValue
 import net.rpcs3.ui.settings.components.preference.HomePreference
 import net.rpcs3.ui.settings.components.preference.RegularPreference
 import net.rpcs3.ui.settings.components.preference.SingleSelectionDialog
@@ -217,7 +218,7 @@ fun AdvancedSettingsScreen(
                                                 itemValue = value.toLong()
                                             }
                                         },
-                                        valueContent = { Text(itemValue.toString()) },
+                                        valueContent = { PreferenceValue(text = itemValue.toString()) },
                                         onLongClick = {
                                             AlertDialogQueue.showDialog(
                                                 title = "Reset Setting",
@@ -263,7 +264,7 @@ fun AdvancedSettingsScreen(
                                                 itemValue = value.toDouble()
                                             }
                                         },
-                                        valueContent = { Text(itemValue.toString() ) },
+                                        valueContent = { PreferenceValue(text = itemValue.toString()) },
                                         onLongClick = {
                                             AlertDialogQueue.showDialog(
                                                 title = "Reset Setting",

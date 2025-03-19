@@ -35,6 +35,7 @@ import net.rpcs3.ui.common.ComposePreview
 import net.rpcs3.ui.settings.components.base.BaseDialogPreference
 import net.rpcs3.ui.settings.components.core.PreferenceIcon
 import net.rpcs3.ui.settings.components.core.PreferenceTitle
+import net.rpcs3.ui.settings.components.core.PreferenceValue
 
 @Composable
 fun <T> SingleSelectionDialog(
@@ -65,7 +66,7 @@ fun <T> SingleSelectionDialog(
         leadingIcon = icon,
         enabled = enabled,
         subtitle = subtitle,
-        value = { Text(currentValue.toString()) },
+        value = { PreferenceValue(text = currentValue.toString()) },
         trailingContent = trailingContent,
         onLongClick = onLongClick,
         onClick = {
