@@ -217,7 +217,21 @@ fun AdvancedSettingsScreen(
                                                 itemValue = value.toLong()
                                             }
                                         },
-                                        valueContent = { Text(itemValue.toString()) }
+                                        valueContent = { Text(itemValue.toString()) },
+                                        onLongClick = {
+                                            AlertDialogQueue.showDialog(
+                                                title = "Reset Setting",
+                                                message = "Do you want to reset '$key' to its default value?",
+                                                onConfirm = {
+                                                    if (RPCS3.instance.settingsSet(itemPath, def.toString())) {
+                                                        itemObject.put("value", def)
+                                                        itemValue = def
+                                                    } else {
+                                                        AlertDialogQueue.showDialog("Setting error", "Failed to reset $key")
+                                                    }
+                                                }
+                                            )
+                                        }
                                     )
                                 }
                             }
@@ -249,7 +263,21 @@ fun AdvancedSettingsScreen(
                                                 itemValue = value.toDouble()
                                             }
                                         },
-                                        valueContent = { Text(itemValue.toString() ) }
+                                        valueContent = { Text(itemValue.toString() ) },
+                                        onLongClick = {
+                                            AlertDialogQueue.showDialog(
+                                                title = "Reset Setting",
+                                                message = "Do you want to reset '$key' to its default value?",
+                                                onConfirm = {
+                                                    if (RPCS3.instance.settingsSet(itemPath, def.toString())) {
+                                                        itemObject.put("value", def)
+                                                        itemValue = def
+                                                    } else {
+                                                        AlertDialogQueue.showDialog("Setting error", "Failed to reset $key")
+                                                    }
+                                                }
+                                            )
+                                        }
                                     )
                                 }
                             }
