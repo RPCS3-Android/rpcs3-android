@@ -34,10 +34,11 @@ fun SliderPreference(
     value: Float,
     onValueChange: (Float) -> Unit,
     title: @Composable () -> Unit,
-    leadingIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    leadingIcon: @Composable () -> Unit = {},
     subtitle: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
+    valueContent: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
@@ -65,7 +66,8 @@ fun SliderPreference(
         },
         trailingContent = trailingContent,
         enabled = enabled,
-        onClick = { onClick?.invoke() }
+        onClick = { onClick?.invoke() },
+        value = valueContent,
     )
 }
 
@@ -74,10 +76,11 @@ fun SliderPreference(
     value: Float,
     onValueChange: (Float) -> Unit,
     title: String,
-    leadingIcon: ImageVector,
     modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null,
     subtitle: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
+    valueContent: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
@@ -91,6 +94,7 @@ fun SliderPreference(
         modifier = modifier,
         subtitle = subtitle,
         trailingContent = trailingContent,
+        valueContent = valueContent,
         enabled = enabled,
         valueRange = valueRange,
         steps = steps,

@@ -142,7 +142,7 @@ struct GraphicsFrame : GSFrameBase {
     ANativeWindow *result;
     while ((result = g_native_window.load()) == nullptr) [[unlikely]] {
       if (Emu.IsStopped()) {
-        return nullptr;
+        return activeNativeWindow;
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -1353,7 +1353,6 @@ static void setupCallbacks() {
       .on_save_state_progress = [](auto...) {},
       .enable_disc_eject = [](auto...) {},
       .enable_disc_insert = [](auto...) {},
-      .try_to_quit = [](auto...) { return true; },
       .handle_taskbar_progress = [](auto...) {},
       .init_kb_handler =
           [](auto...) {
@@ -1675,7 +1674,7 @@ extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_RPCS3_shutdown(JNIEnv *env,
   Emu.Kill();
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_boot(JNIEnv *env,
+extern "C" JNIEXPORT jint JNICALL Java_net_rpcs3_RPCS3_boot(JNIEnv *env,
                                                                 jobject,
                                                                 jstring jpath) {
   Emu.SetForceBoot(true);
@@ -1683,8 +1682,20 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_boot(JNIEnv *env,
   while (path.ends_with('/')) {
     path.pop_back();
   }
-  Emu.BootGame(path, "", false, cfg_mode::global);
-  return true;
+
+  return static_cast<int>(Emu.BootGame(path, "", false, cfg_mode::global));
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_net_rpcs3_RPCS3_getState(JNIEnv *env, jobject) {
+  return static_cast<int>(Emu.GetStatus(false));
+}
+
+extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_RPCS3_kill(JNIEnv *env, jobject) {
+  Emu.Kill();
+}
+
+extern "C" JNIEXPORT jstring JNICALL Java_net_rpcs3_RPCS3_getTitleId(JNIEnv *env, jobject) {
+  return wrap(env, Emu.GetTitleID());
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_surfaceEvent(
@@ -2411,7 +2422,3 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_settingsSet(
 extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_supportsCustomDriverLoading(JNIEnv *env, jobject instance) {
   return access("/dev/kgsl-3d0", F_OK) == 0;
 }
-
-// extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_utils_GpuDriverHelper_forceMaxGpuClocks(JNIEnv *env, jobject instance, jboolean enable) {
-//     adrenotools_set_turbo(enable);
-// }

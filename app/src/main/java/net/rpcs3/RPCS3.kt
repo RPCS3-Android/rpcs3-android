@@ -29,12 +29,51 @@ enum class Digital2Flags(val bit: Int)
     CELL_PAD_CTRL_SQUARE(0x00000080),
 };
 
+enum class EmulatorState {
+    Stopped,
+    Loading,
+    Stopping,
+    Running,
+    Paused,
+    Frozen, // paused but cannot resume
+    Ready,
+    Starting;
+
+    companion object {
+        fun fromInt(value: Int) = EmulatorState.entries.first { it.ordinal == value }
+    }
+}
+
+enum class BootResult
+{
+    NoErrors,
+    GenericError,
+    NothingToBoot,
+    WrongDiscLocation,
+    InvalidFileOrFolder,
+    InvalidBDvdFolder,
+    InstallFailed,
+    DecryptionError,
+    FileCreationError,
+    FirmwareMissing,
+    UnsupportedDiscType,
+    SavestateCorrupted,
+    SavestateVersionUnsupported,
+    StillRunning,
+    AlreadyAdded,
+    CurrentlyRestricted;
+
+    companion object {
+        fun fromInt(value: Int) = entries.first { it.ordinal == value }
+    }
+};
+
 class RPCS3 {
     external fun initialize(rootDir: String): Boolean
     external fun installFw(fd: Int, progressId: Long): Boolean
     external fun install(fd: Int, progressId: Long): Boolean
     external fun installKey(fd: Int, requestId: Long, gamePath: String): Boolean
-    external fun boot(path: String): Boolean
+    external fun boot(path: String): Int
     external fun surfaceEvent(surface: Surface, event: Int): Boolean
     external fun usbDeviceEvent(fd: Int, vendorId: Int, productId: Int, event: Int): Boolean
     external fun processCompilationQueue(): Boolean
@@ -44,6 +83,9 @@ class RPCS3 {
     external fun systemInfo(): String
     external fun settingsGet(path: String): String
     external fun settingsSet(path: String, value: String): Boolean
+    external fun getState() : Int
+    external fun kill()
+    external fun getTitleId(): String
     external fun supportsCustomDriverLoading() : Boolean
 //    external fun forceMaxGpuClocks(enable : Boolean)
 
@@ -52,6 +94,14 @@ class RPCS3 {
         var initialized = false
         val instance = RPCS3()
         var rootDirectory: String = ""
+
+        fun boot(path: String): BootResult {
+            return BootResult.fromInt(instance.boot(path))
+        }
+
+        fun getState(): EmulatorState {
+            return EmulatorState.fromInt(instance.getState())
+        }
 
         init {
             System.loadLibrary("rpcs3-android")
