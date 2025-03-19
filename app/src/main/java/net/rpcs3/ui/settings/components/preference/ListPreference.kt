@@ -49,6 +49,7 @@ fun <T> SingleSelectionDialog(
     trailingContent: @Composable (() -> Unit)? = {},
     valueToText: (T) -> String = { it.toString() },
     key: ((T) -> Any)? = null,
+    onLongClick: () -> Unit = {},
     item: @Composable (value: T, currentValue: T?, onClick: () -> Unit) -> Unit =
         ListPreferenceItem(valueToText)
 ) {
@@ -65,10 +66,12 @@ fun <T> SingleSelectionDialog(
         enabled = enabled,
         subtitle = subtitle,
         value = { Text(currentValue.toString()) },
-        trailingContent = trailingContent
-    ) {
-        showDialog = true
-    }
+        trailingContent = trailingContent,
+        onLongClick = onLongClick,
+        onClick = {
+           showDialog = true
+        }
+    )
 
     if (!showDialog) return
 
@@ -116,6 +119,7 @@ fun <T> SingleSelectionDialog(
     trailingContent: @Composable (() -> Unit)? = {},
     valueToText: (T) -> String = { it.toString() },
     key: ((T) -> Any)? = null,
+    onLongClick: () -> Unit = {},
     item: @Composable (value: T, currentValue: T?, onClick: () -> Unit) -> Unit =
         ListPreferenceItem(valueToText)
 ) {
@@ -131,6 +135,7 @@ fun <T> SingleSelectionDialog(
         trailingContent = trailingContent,
         valueToText = valueToText,
         key = key,
+        onLongClick = onLongClick,
         item = item
     )
 }

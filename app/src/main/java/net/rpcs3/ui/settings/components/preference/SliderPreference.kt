@@ -43,7 +43,8 @@ fun SliderPreference(
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
     sliderColors: SliderColors = SliderDefaults.colors(),
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    onLongClick: () -> Unit = {}
 ) {
     RegularPreference(
         modifier = modifier,
@@ -67,6 +68,7 @@ fun SliderPreference(
         trailingContent = trailingContent,
         enabled = enabled,
         onClick = { onClick?.invoke() },
+        onLongClick = onLongClick,
         value = valueContent,
     )
 }
@@ -84,7 +86,8 @@ fun SliderPreference(
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
-    sliderColors: SliderColors = SliderDefaults.colors()
+    sliderColors: SliderColors = SliderDefaults.colors(),
+    onLongClick: () -> Unit = {}
 ) {
     SliderPreference(
         value = value,
@@ -98,7 +101,8 @@ fun SliderPreference(
         enabled = enabled,
         valueRange = valueRange,
         steps = steps,
-        sliderColors = sliderColors
+        sliderColors = sliderColors,
+        onLongClick = onLongClick
     )
 }
 

@@ -35,7 +35,8 @@ fun SwitchPreference(
     subtitle: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
     switchColors: SwitchColors = SwitchDefaults.colors(),
-    onClick: (Boolean) -> Unit
+    onClick: (Boolean) -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     val onValueUpdated: (Boolean) -> Unit = { newValue -> onClick(newValue) }
     RegularPreference(
@@ -52,7 +53,8 @@ fun SwitchPreference(
             )
         },
         enabled = enabled,
-        onClick = { onValueUpdated(!checked) }
+        onClick = { onValueUpdated(!checked) },
+        onLongClick = onLongClick
     )
 }
 
@@ -65,7 +67,8 @@ fun SwitchPreference(
     subtitle: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
     switchColors: SwitchColors = SwitchDefaults.colors(),
-    onClick: (Boolean) -> Unit
+    onClick: (Boolean) -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     SwitchPreference(
         checked = checked,
@@ -75,7 +78,8 @@ fun SwitchPreference(
         subtitle = subtitle,
         enabled = enabled,
         switchColors = switchColors,
-        onClick = onClick
+        onClick = onClick,
+        onLongClick = onLongClick
     )
 }
 
@@ -88,10 +92,11 @@ private fun SwitchPreview() {
             checked = switchState,
             title = "Enable Something",
             subtitle = { PreferenceSubtitle(text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.") },
-            leadingIcon = Icons.Default.Build
-        ) {
-            switchState = it
-        }
+            leadingIcon = Icons.Default.Build,
+            onClick = {
+                switchState = it
+            }
+        )
     }
 }
 
@@ -105,9 +110,10 @@ private fun SwitchDisabledPreview() {
             title = "Enable Something",
             subtitle = { PreferenceSubtitle(text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.") },
             leadingIcon = Icons.Default.Build,
-            enabled = false
-        ) {
-            switchState = it
-        }
+            enabled = false,
+            onClick = {
+                switchState = it
+            }
+        )
     }
 }

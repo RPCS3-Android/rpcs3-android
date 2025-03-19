@@ -38,7 +38,8 @@ fun RegularPreference(
     value: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     BasePreference(
         title = title,
@@ -48,7 +49,8 @@ fun RegularPreference(
         leadingContent = leadingIcon,
         trailingContent = trailingContent,
         enabled = enabled,
-        onClick = onClick
+        onClick = onClick,
+        onLongClick = onLongClick
     )
 }
 
@@ -61,7 +63,8 @@ fun RegularPreference(
     value: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
     enabled: Boolean = true,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     RegularPreference(
         title = { PreferenceTitle(title = title) },
@@ -71,7 +74,8 @@ fun RegularPreference(
         value = value,
         trailingContent = trailingContent,
         enabled = enabled,
-        onClick = onClick
+        onClick = onClick,
+        onLongClick = onLongClick
     )
 }
 
