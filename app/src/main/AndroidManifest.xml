@@ -40,7 +40,7 @@
         <activity
             android:name=".RPCS3Activity"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
-            android:screenOrientation="landscape"
+            android:screenOrientation="sensorLandscape"
             android:launchMode="singleTask"
             android:exported="false" >
             <intent-filter>
