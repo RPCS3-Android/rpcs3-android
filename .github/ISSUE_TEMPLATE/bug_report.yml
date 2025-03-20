@@ -1,8 +1,7 @@
 name: Bug report
-about: Create a report to help us improve and investigate the issue
+description: Create a report to help us improve and investigate the issue
 title: "[Bug] <BUG_NAME>"
 labels: bug
-assignees: ''
 body:
   - type: input
     id: app-title
