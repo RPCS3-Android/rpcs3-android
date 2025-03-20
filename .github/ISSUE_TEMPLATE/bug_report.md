@@ -1,28 +1,53 @@
----
 name: Bug report
 about: Create a report to help us improve and investigate the issue
 title: "[Bug] <BUG_NAME>"
 labels: bug
 assignees: ''
----
+body:
+  - type: input
+    id: app-title
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
 
-- **Describe the bug**
-A clear and concise description of what the bug is.
+  - type: textarea
+    id: stepstoreproducebug
+    attributes:
+      label: Steps to reproduce the behavior
+      value: |
+        - 1. Go to '...'
+        - 2. Click on '....'
+        - 3. Scroll down to '....'
+        - 4. See error
+    validations:
+      required: true
 
-- **To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+  - type: textarea
+    id: upload-screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+      placeholder: Upload your screenshots here
+    validations:
+      required: false
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+  - type: textarea
+    id: phonespecs
+    attributes:
+      label: Smartphone (please complete the following information)
+      value: |
+        - Device: [e.g. Pixel 32 Pro]
+        - OS: [e.g. OneUI 21]
+        - Version [e.g. v2.1.0]
+    validations:
+      required: true
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. Pixel 32 Pro]
- - OS: [e.g. OneUI 21]
- - Version [e.g. v2.1.0]
-
-**Additional context**
-Add any other context about the problem here.
+  - type: textarea
+    id: extracontext
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
+    validations:
+      required: false
