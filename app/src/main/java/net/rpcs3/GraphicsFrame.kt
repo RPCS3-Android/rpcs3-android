@@ -32,12 +32,6 @@ class GraphicsFrame : SurfaceView, SurfaceHolder.Callback {
         holder.addCallback(this)
     }
 
-    fun boot(path: String) {
-        thread {
-            RPCS3.instance.boot(path)
-        }
-    }
-
     override fun surfaceCreated(p0: SurfaceHolder) {
         RPCS3.instance.surfaceEvent(p0.surface, 0)
     }

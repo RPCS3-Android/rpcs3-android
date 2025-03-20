@@ -3,6 +3,7 @@
 #include "Emu/Audio/Cubeb/CubebBackend.h"
 #include "Emu/Audio/Null/NullAudioBackend.h"
 #include "Emu/Cell/Modules/cellMsgDialog.h"
+#include "Emu/Cell/Modules/cellSysutil.h"
 #include "Emu/Cell/PPUAnalyser.h"
 #include "Emu/Cell/SPURecompiler.h"
 #include "Emu/Cell/lv2/sys_sync.h"
@@ -14,6 +15,8 @@
 #include "Emu/Io/Null/null_music_handler.h"
 #include "Emu/Io/pad_config_types.h"
 #include "Emu/RSX/Null/NullGSRender.h"
+#include "Emu/RSX/Overlays/overlay_manager.h"
+#include "Emu/RSX/Overlays/overlay_save_dialog.h"
 #include "Emu/RSX/RSXThread.h"
 #include "Emu/RSX/VK/VKGSRender.h"
 #include "Emu/localized_string_id.h"
@@ -100,6 +103,8 @@ struct LogListener : logs::listener {
     int prio = 0;
     switch (static_cast<logs::level>(msg)) {
     case logs::level::always:
+      prio = ANDROID_LOG_INFO;
+      break;
     case logs::level::fatal:
       prio = ANDROID_LOG_FATAL;
       break;
@@ -142,7 +147,7 @@ struct GraphicsFrame : GSFrameBase {
     ANativeWindow *result;
     while ((result = g_native_window.load()) == nullptr) [[unlikely]] {
       if (Emu.IsStopped()) {
-        return nullptr;
+        return activeNativeWindow;
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -753,7 +758,7 @@ static std::string locateEbootPath(const std::string &root) {
   return {};
 }
 
-static std::optional<GameInfo> fetchGameInfo(const psf::registry &psf) {
+static std::optional<GameInfo> fetchGameInfo(const psf::registry &psf, std::filesystem::path psfRootPath = {}) {
   auto titleId = std::string(psf::get_string(psf, "TITLE_ID"));
   auto name = std::string(psf::get_string(psf, "TITLE"));
   auto bootable = psf::get_integer(psf, "BOOTABLE", 0);
@@ -765,9 +770,30 @@ static std::optional<GameInfo> fetchGameInfo(const psf::registry &psf) {
 
   bool isDiscGame = category == "DG";
 
-  auto path = isDiscGame
-                  ? fs::get_config_dir() + "games/" + titleId + "/"
-                  : rpcs3::utils::get_hdd0_dir() + "game/" + titleId + "/";
+  std::string path;
+
+  if (!isDiscGame) {
+    path = rpcs3::utils::get_hdd0_dir() + "game/" + titleId + "/";
+  } else {
+    if (psfRootPath.empty()) {
+      path = fs::get_config_dir() + "games/" + titleId + "/";
+    } else {
+      // Locate game root path
+      if (psfRootPath.filename() == "USRDIR") {
+        psfRootPath = psfRootPath.parent_path();
+      }
+
+      if (psfRootPath.filename() == "PS3_GAME") {
+        psfRootPath = psfRootPath.parent_path();
+      }
+
+      path = psfRootPath;
+      if (!path.ends_with('/')) {
+        path += '/';
+      }
+    }
+  }
+
   auto dataPath = isDiscGame ? path + "PS3_GAME/" : path;
   auto iconPath = dataPath + "ICON0.PNG";
   auto moviePath = dataPath + "ICON1.PAM";
@@ -863,7 +889,7 @@ static void collectGameInfo(JNIEnv *env, jlong progressId,
 
     rpcs3_android.notice("collectGameInfo: sfo at %s", path);
 
-    if (auto gameInfo = fetchGameInfo(psf)) {
+    if (auto gameInfo = fetchGameInfo(psf, path)) {
       gameInfos.push_back(std::move(*gameInfo));
 
       if (gameInfos.size() >= 10) {
@@ -1124,6 +1150,50 @@ private:
   static std::atomic<jlong> s_pendingProgressId;
 };
 
+struct OverlaySaveDialog : SaveDialogBase {
+  s32 ShowSaveDataList(std::vector<SaveDataEntry> &save_entries, s32 focused,
+                       u32 op, vm::ptr<CellSaveDataListSet> listSet,
+                       bool enable_overlay) override {
+    rpcs3_android.notice("ShowSaveDataList(save_entries=%d, focused=%d, "
+                         "op=0x%x, listSet=*0x%x, enable_overlay=%d)",
+                         save_entries.size(), focused, op, listSet,
+                         enable_overlay);
+
+    bool use_end = sysutil_send_system_cmd(CELL_SYSUTIL_DRAWING_BEGIN, 0) >= 0;
+
+    auto atExit = AtExit([&] {
+      if (use_end) {
+        sysutil_send_system_cmd(CELL_SYSUTIL_DRAWING_END, 0);
+      }
+    });
+
+    if (!use_end) {
+      rpcs3_android.error(
+          "ShowSaveDataList(): Not able to notify DRAWING_BEGIN callback "
+          "because one has already been sent!");
+    }
+
+    if (auto manager = g_fxo->try_get<rsx::overlays::display_manager>()) {
+      rpcs3_android.notice("ShowSaveDataList: Showing native UI dialog");
+
+      s32 result = manager->create<rsx::overlays::save_dialog>()->show(
+          save_entries, focused, op, listSet, enable_overlay);
+
+      if (result != rsx::overlays::user_interface::selection_code::error) {
+        rpcs3_android.notice(
+            "ShowSaveDataList: Native UI dialog returned with selection %d",
+            result);
+
+        return result;
+      }
+
+      rpcs3_android.error("ShowSaveDataList: Native UI dialog returned error");
+    }
+
+    return -2;
+  }
+};
+
 std::atomic<jlong> MessageDialog::s_pendingProgressId = -1;
 
 struct CompilationWorkload {
@@ -1353,7 +1423,6 @@ static void setupCallbacks() {
       .on_save_state_progress = [](auto...) {},
       .enable_disc_eject = [](auto...) {},
       .enable_disc_insert = [](auto...) {},
-      .try_to_quit = [](auto...) { return true; },
       .handle_taskbar_progress = [](auto...) {},
       .init_kb_handler =
           [](auto...) {
@@ -1396,8 +1465,19 @@ static void setupCallbacks() {
           },
       .get_audio =
           [](auto...) {
-            std::shared_ptr<AudioBackend> result =
-                std::make_shared<CubebBackend>();
+            std::shared_ptr<AudioBackend> result;
+
+            switch (g_cfg.audio.renderer.get()) {
+            case audio_renderer::null:
+              result = std::make_shared<NullAudioBackend>();
+              break;
+
+            case audio_renderer::cubeb:
+            default:
+              result = std::make_shared<CubebBackend>();
+              break;
+            }
+
             if (!result->Initialized()) {
               rpcs3_android.error(
                   "Audio renderer %s could not be initialized, using a Null "
@@ -1411,7 +1491,8 @@ static void setupCallbacks() {
       .get_audio_enumerator = [](auto...) { return nullptr; },
       .get_msg_dialog = [] { return std::make_shared<MessageDialog>(); },
       .get_osk_dialog = [](auto...) { return nullptr; },
-      .get_save_dialog = [](auto...) { return nullptr; },
+      .get_save_dialog =
+          [](auto...) { return std::make_unique<OverlaySaveDialog>(); },
       .get_sendmessage_dialog = [](auto...) { return nullptr; },
       .get_recvmessage_dialog = [](auto...) { return nullptr; },
       .get_trophy_notification_dialog = [](auto...) { return nullptr; },
@@ -1443,7 +1524,17 @@ static void setupCallbacks() {
             return ec ? std::string(arg) : result;
           },
       .get_font_dirs = [](auto...) { return std::vector<std::string>(); },
-      .on_install_pkgs = [](auto...) { return false; },
+      .on_install_pkgs =
+          [](const std::vector<std::string> &pkgs) {
+            for (const std::string &pkg : pkgs) {
+              if (!rpcs3::utils::install_pkg(pkg)) {
+                rpcs3_android.error("cd install pkgs: failed to install %s",
+                                    pkg);
+                return false;
+              }
+            }
+            return true;
+          },
       .add_breakpoint = [](auto...) {},
       .display_sleep_control_supported = [](auto...) { return false; },
       .enable_display_sleep = [](auto...) {},
@@ -1581,6 +1672,31 @@ Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
         "libusb_set_option(LIBUSB_OPTION_NO_DEVICE_DISCOVERY) -> %d", r);
   }
 
+  // Initialize thread pool finalizer // ???
+  static_cast<void>(named_thread("", [](int) {}));
+
+  static std::unique_ptr<logs::listener> log_file;
+  {
+    // Check free space
+    fs::device_stat stats{};
+    if (!fs::statfs(fs::get_cache_dir(), stats) ||
+        stats.avail_free < 128 * 1024 * 1024) {
+      std::fprintf(stderr, "Not enough free space for logs (%f KB)",
+                   stats.avail_free / 1000000.);
+    }
+
+    // preserve old log file
+    if (std::filesystem::exists(fs::get_log_dir() + "RPCS3.log")) {
+      std::error_code ec;
+      std::filesystem::remove(fs::get_log_dir() + "RPCS3.old.log", ec);
+      std::filesystem::rename(fs::get_log_dir() + "RPCS3.log", fs::get_log_dir() + "RPCS3.old.log", ec);
+    }
+
+    // Limit log size to ~25% of free space
+    log_file = logs::make_file_listener(fs::get_log_dir() + "RPCS3.log",
+                                        stats.avail_free / 4);
+  }
+
   logs::stored_message ver{rpcs3_android.always()};
   ver.text = fmt::format("RPCS3 v%s", rpcs3::get_verbose_version());
 
@@ -1616,9 +1732,10 @@ Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
     }
   };
 
-  set_rlim(RLIMIT_MEMLOCK, 0x80000000);
-  set_rlim(RLIMIT_NOFILE, 0x10000);
+  set_rlim(RLIMIT_MEMLOCK, RLIM_INFINITY);
+  set_rlim(RLIMIT_NOFILE, RLIM_INFINITY);
   set_rlim(RLIMIT_STACK, 128 * 1024 * 1024);
+  set_rlim(RLIMIT_AS, RLIM_INFINITY);
 
   virtual_pad_handler::set_on_connect_cb(initVirtualPad);
   setupCallbacks();
@@ -1674,16 +1791,31 @@ extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_RPCS3_shutdown(JNIEnv *env,
   Emu.Kill();
 }
 
-extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_boot(JNIEnv *env,
-                                                                jobject,
-                                                                jstring jpath) {
+extern "C" JNIEXPORT jint JNICALL Java_net_rpcs3_RPCS3_boot(JNIEnv *env,
+                                                            jobject,
+                                                            jstring jpath) {
   Emu.SetForceBoot(true);
   auto path = unwrap(env, jpath);
   while (path.ends_with('/')) {
     path.pop_back();
   }
-  Emu.BootGame(path, "", false, cfg_mode::global);
-  return true;
+
+  return static_cast<int>(Emu.BootGame(path, "", false, cfg_mode::global));
+}
+
+extern "C" JNIEXPORT jint JNICALL Java_net_rpcs3_RPCS3_getState(JNIEnv *env,
+                                                                jobject) {
+  return static_cast<int>(Emu.GetStatus(false));
+}
+
+extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_RPCS3_kill(JNIEnv *env,
+                                                            jobject) {
+  Emu.Kill();
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_net_rpcs3_RPCS3_getTitleId(JNIEnv *env, jobject) {
+  return wrap(env, Emu.GetTitleID());
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_surfaceEvent(
@@ -2311,7 +2443,7 @@ Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
 
   {
     vk::instance device_enum_context;
-    if (device_enum_context.create("RPCS3", true)) {
+    if (device_enum_context.create("RPCS3")) {
       device_enum_context.bind();
       const std::vector<vk::physical_device> &gpus =
           device_enum_context.enumerate_devices();
@@ -2320,9 +2452,97 @@ Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
         result += "GPU: ";
         result += gpu.get_name();
         result += "\n";
+        result += "  Driver: ";
+        result += gpu.get_driver_name();
+        result += " v";
+        result += gpu.get_driver_version();
+        result += "\n";
+        result += "  Vulkan: ";
+        result += gpu.get_driver_vk_version();
+        result += "\n";
       }
     }
   }
 
   return wrap(env, result);
+}
+
+static cfg::_base *find_cfg_node(cfg::_base *root, std::string_view path) {
+  auto pathList = fmt::split(path, {"@@"});
+  std::ranges::reverse(pathList);
+
+  while (!pathList.empty()) {
+    auto elem = pathList.back();
+    pathList.pop_back();
+    if (elem.empty()) {
+      continue;
+    }
+
+    auto root_node = dynamic_cast<cfg::node *>(root);
+    if (root_node == nullptr) {
+      return nullptr;
+    }
+
+    cfg::_base *child_node = nullptr;
+
+    for (auto node : root_node->get_nodes()) {
+      if (node->get_name() == elem) {
+        child_node = node;
+        break;
+      }
+    }
+
+    if (child_node == nullptr) {
+      return nullptr;
+    }
+
+    root = child_node;
+  }
+
+  return root;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_net_rpcs3_RPCS3_settingsGet(JNIEnv *env, jobject, jstring jpath) {
+  auto root = find_cfg_node(&g_cfg, unwrap(env, jpath));
+
+  if (root == nullptr) {
+    return nullptr;
+  }
+
+  return wrap(env, root->to_json().dump(4));
+}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_settingsSet(
+    JNIEnv *env, jobject, jstring jpath, jstring jvalue) {
+  nlohmann::json value;
+  try {
+    value = nlohmann::json::parse(unwrap(env, jvalue));
+  } catch (...) {
+    rpcs3_android.error("settingsSet: node %s passed with invalid json '%s'",
+                        unwrap(env, jpath), unwrap(env, jvalue));
+    return false;
+  }
+
+  auto root = find_cfg_node(&g_cfg, unwrap(env, jpath));
+
+  if (root == nullptr) {
+    rpcs3_android.error("settingsSet: node %s not found", unwrap(env, jpath));
+    return false;
+  }
+
+  if (!root->from_json(value, !Emu.IsStopped())) {
+    rpcs3_android.error("settingsSet: node %s not accepts value '%s'",
+                        unwrap(env, jpath), value.dump());
+    return false;
+  }
+
+  Emulator::SaveSettings(g_cfg.to_string(), "");
+  return true;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_net_rpcs3_RPCS3_supportsCustomDriverLoading(JNIEnv *env,
+                                                 jobject instance) {
+  return access("/dev/kgsl-3d0", F_OK) == 0;
 }

@@ -5,17 +5,22 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.util.Log
 import android.widget.Toast
+import androidx.documentfile.provider.DocumentFile
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -24,6 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,19 +40,269 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import net.rpcs3.R
+import net.rpcs3.RPCS3
+import net.rpcs3.dialogs.AlertDialogQueue
 import net.rpcs3.provider.AppDataDocumentProvider
 import net.rpcs3.ui.common.ComposePreview
 import net.rpcs3.ui.settings.components.core.PreferenceIcon
-import net.rpcs3.ui.settings.components.core.PreferenceSubtitle
-import net.rpcs3.ui.settings.components.core.PreferenceTitle
+import net.rpcs3.ui.settings.components.core.PreferenceValue
+import net.rpcs3.ui.settings.components.preference.HomePreference
 import net.rpcs3.ui.settings.components.preference.RegularPreference
+import net.rpcs3.ui.settings.components.preference.SingleSelectionDialog
+import net.rpcs3.ui.settings.components.preference.SliderPreference
+import net.rpcs3.ui.settings.components.preference.SwitchPreference
+import org.json.JSONObject
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdvancedSettingsScreen(
+    modifier: Modifier = Modifier,
+    navigateBack: () -> Unit,
+    navigateTo: (path: String) -> Unit,
+    settings: JSONObject,
+    path: String = ""
+) {
+    val settingValue = remember { mutableStateOf(settings) }
+
+    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    Scaffold(
+        modifier = Modifier
+            .nestedScroll(topBarScrollBehavior.nestedScrollConnection)
+            .then(modifier),
+        topBar = {
+            val titlePath = path.replace("@@", " / ")
+            LargeTopAppBar(
+                title = { Text(text = "Advanced Settings$titlePath" , fontWeight = FontWeight.Medium) },
+                scrollBehavior = topBarScrollBehavior,
+                navigationIcon = {
+                    IconButton(
+                        onClick = navigateBack
+                    ) {
+                        Icon(imageVector = Icons.AutoMirrored.Default.KeyboardArrowLeft, null)
+                    }
+                }
+            )
+        }
+    ) { contentPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(contentPadding),
+        ) {
+            settings.keys().forEach { key ->
+                val itemPath = "$path@@$key"
+                item(key = key) {
+                    val itemObject = settingValue.value[key] as? JSONObject
+
+                    if (itemObject != null) {
+                        when (val type = if (itemObject.has("type")) itemObject.getString("type") else null) {
+                             null -> {
+                                RegularPreference(
+                                    title = key,
+                                    leadingIcon = null,
+                                    onClick = {
+                                        Log.e("Main", "Navigate to settings$itemPath, object $itemObject")
+                                        navigateTo("settings$itemPath")
+                                    }
+                                )  
+                            }
+
+                            "bool" -> {
+                                var itemValue by remember {  mutableStateOf(itemObject.getBoolean("value"))  }
+                                val def = itemObject.getBoolean("default")
+                                SwitchPreference (
+                                    checked = itemValue,
+                                    title = key + if (itemValue == def) "" else " *",
+                                    leadingIcon = null,
+                                    onClick = { value ->
+                                        if (!RPCS3.instance.settingsSet(itemPath, if (value) "true" else "false")) {
+                                           AlertDialogQueue.showDialog("Setting error", "Failed to assign $itemPath value $value")
+                                        } else {
+                                            itemObject.put("value", value)
+                                            itemValue = value
+                                        }
+                                   },
+                                   onLongClick = {
+                                        AlertDialogQueue.showDialog(
+                                            title = "Reset Setting",
+                                            message = "Do you want to reset '$key' to its default value?",
+                                            onConfirm = {
+                                                if (RPCS3.instance.settingsSet(itemPath, def.toString())) {
+                                                    itemObject.put("value", def)
+                                                    itemValue = def
+                                                } else {
+                                                    AlertDialogQueue.showDialog("Setting error", "Failed to reset $key")
+                                                }
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+
+                            "enum" -> {
+                                var itemValue by remember {  mutableStateOf(itemObject.getString("value"))  }
+                                val def = itemObject.getString("default")
+                                val variantsJson = itemObject.getJSONArray("variants")
+                                val variants = ArrayList<String>()
+                                for (i in 0..<variantsJson.length()) {
+                                    variants.add(variantsJson.getString(i))
+                                }
+
+                                SingleSelectionDialog(
+                                    currentValue = if (itemValue in variants) itemValue else variants[0],
+                                    values = variants,
+                                    icon = null,
+                                    title = key + if (itemValue == def) "" else " *",
+                                    onValueChange = {
+                                            value ->
+                                        if (!RPCS3.instance.settingsSet(itemPath, "\"" + value + "\"")) {
+                                            AlertDialogQueue.showDialog("Setting error", "Failed to assign $itemPath value $value")
+                                        } else {
+                                            itemObject.put("value", value)
+                                            itemValue = value
+                                        }
+                                    },
+                                    onLongClick = {
+                                        AlertDialogQueue.showDialog(
+                                            title = "Reset Setting",
+                                            message = "Do you want to reset '$key' to its default value?",
+                                            onConfirm = {
+                                                if (RPCS3.instance.settingsSet(itemPath, def.toString())) {
+                                                    itemObject.put("value", def)
+                                                    itemValue = def
+                                                } else {
+                                                    AlertDialogQueue.showDialog("Setting error", "Failed to reset $key")
+                                                }
+                                            }
+                                        )
+                                    }
+                                )
+                            }
+
+                            "uint", "int" -> {
+                                var max = 0L
+                                var min = 0L
+                                var initialItemValue = 0L
+                                var def = 0L
+                                try {
+                                    initialItemValue = itemObject.getString("value").toLong()
+                                    max = itemObject.getString("max").toLong()
+                                    min = itemObject.getString("min").toLong()
+                                    def = itemObject.getString("default").toLong()
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                                var itemValue by remember { mutableLongStateOf(initialItemValue) }
+                                if (min < max && max - min < 1000) {
+                                    SliderPreference(
+                                        value = itemValue.toFloat(),
+                                        valueRange = min.toFloat()..max.toFloat(),
+                                        title = key + if (itemValue == def) "" else " *",
+                                        steps = (max - min).toInt(),
+                                        onValueChange = { value ->
+                                            if (!RPCS3.instance.settingsSet(
+                                                    itemPath,
+                                                    value.toLong().toString()
+                                                )
+                                            ) {
+                                                AlertDialogQueue.showDialog(
+                                                    "Setting error",
+                                                    "Failed to assign $itemPath value $value"
+                                                )
+                                            } else {
+                                                itemObject.put(
+                                                    "value",
+                                                    value.toLong().toString()
+                                                )
+                                                itemValue = value.toLong()
+                                            }
+                                        },
+                                        valueContent = { PreferenceValue(text = itemValue.toString()) },
+                                        onLongClick = {
+                                            AlertDialogQueue.showDialog(
+                                                title = "Reset Setting",
+                                                message = "Do you want to reset '$key' to its default value?",
+                                                onConfirm = {
+                                                    if (RPCS3.instance.settingsSet(itemPath, def.toString())) {
+                                                        itemObject.put("value", def)
+                                                        itemValue = def
+                                                    } else {
+                                                        AlertDialogQueue.showDialog("Setting error", "Failed to reset $key")
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+
+                            "float" -> {
+                                var itemValue by remember {  mutableDoubleStateOf(itemObject.getString("value").toDouble())  }
+                                val max = if (itemObject.has("max"))  itemObject.getString("max").toDouble() else 0.0
+                                val min =  if (itemObject.has("min"))  itemObject.getString("min").toDouble() else 0.0
+                                val def =  if (itemObject.has("default"))  itemObject.getString("default").toDouble() else 0.0
+
+                                if (min < max && max - min < 1000) {
+                                    SliderPreference(
+                                        value = itemValue.toFloat(),
+                                        valueRange = min.toFloat()..max.toFloat(),
+                                        title = key + if (itemValue == def) "" else " *",
+                                        steps = (max - min + 1).toInt(),
+                                        onValueChange = { value ->
+                                            if (!RPCS3.instance.settingsSet(
+                                                    itemPath,
+                                                    value.toString()
+                                                )
+                                            ) {
+                                                AlertDialogQueue.showDialog(
+                                                    "Setting error",
+                                                    "Failed to assign $itemPath value $value"
+                                                )
+                                            } else {
+                                                itemObject.put("value", value.toDouble().toString())
+                                                itemValue = value.toDouble()
+                                            }
+                                        },
+                                        valueContent = { PreferenceValue(text = itemValue.toString()) },
+                                        onLongClick = {
+                                            AlertDialogQueue.showDialog(
+                                                title = "Reset Setting",
+                                                message = "Do you want to reset '$key' to its default value?",
+                                                onConfirm = {
+                                                    if (RPCS3.instance.settingsSet(itemPath, def.toString())) {
+                                                        itemObject.put("value", def)
+                                                        itemValue = def
+                                                    } else {
+                                                        AlertDialogQueue.showDialog("Setting error", "Failed to reset $key")
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+
+                            else -> {
+                                Log.e("Main", "Unimplemented setting type $type")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
-    navigateBack: () -> Unit
+    navigateBack: () -> Unit,
+    navigateTo: (path: String) -> Unit,
 ) {
     val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
@@ -81,17 +338,18 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(contentPadding),
-        ) {
-            // We can LazyList DSL for each preference later
-            // We can also put the HorizontalDivider into the
-            // DSL overload instead of adding manually
+        ) {    
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            
             item(
                 key = "internal_directory"
             ) {
-                RegularPreference(
-                    title = { PreferenceTitle(title = "View Internal Directory") },
-                    leadingIcon = { PreferenceIcon(icon = painterResource(R.drawable.ic_folder)) },
-                    subtitle = { PreferenceSubtitle(text = "Open internal directory of RPCS3 in file manager") },
+                HomePreference(
+                    title = "View Internal Directory",
+                    icon = { PreferenceIcon(icon = painterResource(R.drawable.ic_folder)) },
+                    description = "Open internal directory of RPCS3 in file manager"
                 ) {
                     if (context.launchBrowseIntent(Intent.ACTION_VIEW) or context.launchBrowseIntent()) {
                         // No Activity found to handle action
@@ -99,37 +357,60 @@ fun SettingsScreen(
                 }
             }
 
-            item { HorizontalDivider() }
-//            item(
-//                key = "firmware_installation",
-//            ) {
-//                RegularPreference(
-//                    title = "Install Firmware",
-//                    leadingIcon = Icons.Default.Build,
-//                    subtitle = { PreferenceSubtitle(text = "Install PS3 Firmware") },
-//                ) {
-//                    firmwareFilePicker.launch("*/*")
-//                }
-//            }
-//
-//            item { HorizontalDivider() }
-//            item(
-//                key = "custom_driver_installation"
-//            ) {
-//                RegularPreference(
-//                    title = "Install Custom Driver",
-//                    leadingIcon = Icons.Default.Build,
-//                ) {
-//                    /* no-op */
-//                }
-//            }
-//            item { HorizontalDivider() }
+            item(key = "advanced_settings") {
+                HomePreference(title = "Advanced Settings", icon = { Icon(imageVector = Icons.Default.Settings, null) }, description = "Configure emulator advanced settings") {
+                    navigateTo("settings@@$")
+                }
+            }
+            
+            item(
+                key = "custom_gpu_driver"
+            ) {
+                HomePreference(
+                    title = "Custom GPU Driver",
+                    icon = { Icon(Icons.Outlined.Build, contentDescription = null) },
+                    description = "Install alternative drivers for potentially better performance or accuracy"
+                ) {
+                    if (RPCS3.instance.supportsCustomDriverLoading()) {
+                        navigateTo("drivers")
+                    } else {
+                        AlertDialogQueue.showDialog(
+                            title = "Custom drivers not supported",
+                            message = "Custom driver loading isn't currently supported for this device",
+                            confirmText = "Close",
+                            dismissText = ""
+                        )
+                    }
+                }
+            }
+
+            item(key = "share_logs") {
+                HomePreference(
+                    title = "Share Log",
+                    icon = { Icon(imageVector = Icons.Default.Share, contentDescription = null) },
+                    description = "Share RPCS3's log file to debug issues"
+                ) {
+                    val file = DocumentFile.fromSingleUri(
+                        context,
+                        DocumentsContract.buildDocumentUri(
+                            AppDataDocumentProvider.AUTHORITY,
+                            "${AppDataDocumentProvider.ROOT_ID}/cache/RPCS3.log"
+                        )
+                    )
+
+                    if (file != null && file.exists() && file.length() != 0L) {
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            setDataAndType(file.uri, "text/plain")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            putExtra(Intent.EXTRA_STREAM, file.uri)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share Log File"))
+                    } else {
+                        Toast.makeText(context, "Log file not found!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
-
-        // Create a data class with title and onClick lambda?
-//        val items: List<String> =
-//            remember { mutableListOf("Install Firmware", "Install custom driver") }
-
     }
 }
 
@@ -137,7 +418,7 @@ fun SettingsScreen(
 @Composable
 private fun SettingsScreenPreview() {
     ComposePreview {
-        SettingsScreen {}
+//        SettingsScreen {}
     }
 }
 

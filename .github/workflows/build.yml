@@ -58,21 +58,17 @@ jobs:
         distribution: 'temurin'
         java-version: 17
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Accept licenses
-      run: |
-        yes | sdkmanager --licenses
-
-    - name: Install packages
-      run: yes | sdkmanager "cmake;3.31.6"
-
-    - name: Download gradlew binaries
-      run: ./gradlew
+    - name: Decode Keystore
+      env:
+        KEYSTORE_ENCODED: ${{ secrets.KEYSTORE }}
+      run: | 
+        echo "$KEYSTORE_ENCODED" | base64 --decode > ${{ github.workspace }}/app/ks.jks
 
     - name: Build with Gradle
       env: 
+        KEYSTORE_PATH: "ks.jks"
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
         CMAKE_C_COMPILER_LAUNCHER: "ccache"
         CMAKE_CXX_COMPILER_LAUNCHER: "ccache"
       run: ./gradlew assembleRelease
@@ -83,7 +79,7 @@ jobs:
       with:
         name: rpcs3-build
         path: |
-          app/build/outputs/apk/release/*
+          app/build/outputs/apk/release/rpcs3-release.apk
 
     - name: Create release
       uses: softprops/action-gh-release@v2

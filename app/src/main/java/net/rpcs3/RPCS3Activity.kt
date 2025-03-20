@@ -2,10 +2,19 @@ package net.rpcs3
 
 import android.app.Activity
 import android.os.Bundle
+import android.view.ViewGroup.MarginLayoutParams
+import android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updateLayoutParams
+import android.util.Log
 import android.view.View
 import androidx.core.view.isInvisible
-import net.rpcs3.R
 import net.rpcs3.databinding.ActivityRpcs3Binding
+import net.rpcs3.dialogs.AlertDialogQueue
+import kotlin.concurrent.thread
 
 class RPCS3Activity : Activity() {
     private lateinit var binding: ActivityRpcs3Binding
@@ -24,7 +33,30 @@ class RPCS3Activity : Activity() {
             binding.oscToggle.setImageResource(if (binding.padOverlay.isInvisible) R.drawable.ic_osc_off else R.drawable.ic_show_osc)
         }
 
-        binding.surfaceView.boot(intent.getStringExtra("path")!!)
+
+        thread {
+            if (RPCS3.getState() != EmulatorState.Stopped) {
+                Log.w("RPCS3 State", RPCS3.getState().name)
+
+                if (RPCS3.getState() != EmulatorState.Stopping) {
+                    RPCS3.instance.kill()
+                }
+
+                while (RPCS3.getState() != EmulatorState.Stopped) {
+                    Thread.sleep(300)
+                }
+            }
+
+            Log.w("RPCS3 State", RPCS3.getState().name)
+
+            val bootResult = RPCS3.boot(intent.getStringExtra("path")!!)
+
+            if (bootResult != BootResult.NoErrors) {
+                AlertDialogQueue.showDialog("Boot Failed", "Error: ${bootResult.name}")
+                finish()
+            }
+        }
+
     }
 
     override fun onDestroy() {
@@ -33,14 +65,31 @@ class RPCS3Activity : Activity() {
     }
 
     private fun enableFullScreenImmersive() {
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            or View.SYSTEM_UI_FLAG_FULLSCREEN
-            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        )
+        with(window) {
+            WindowCompat.setDecorFitsSystemWindows(this, false)
+            val insetsController = WindowInsetsControllerCompat(this, decorView)
+            insetsController.apply {
+                hide(WindowInsetsCompat.Type.systemBars())
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+            attributes.layoutInDisplayCutoutMode = LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+        applyInsetsToPadOverlay()
+    }
+
+    private fun applyInsetsToPadOverlay() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.padOverlay) { view, windowInsets ->
+            // I don't think we need `displayCutout` insets here as well
+            // Since there is hardly any overlay overlapping with it
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updateLayoutParams<MarginLayoutParams> {
+                leftMargin = insets.left
+                rightMargin = insets.right
+                topMargin = insets.top
+                bottomMargin = insets.bottom
+            }
+            WindowInsetsCompat.CONSUMED
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

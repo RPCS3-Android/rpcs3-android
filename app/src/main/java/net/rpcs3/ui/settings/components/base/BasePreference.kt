@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -54,18 +58,21 @@ import net.rpcs3.ui.settings.components.core.PreferenceTitle
  * @see Surface
  */
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BasePreference(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     subContent: @Composable (() -> Unit)? = null,
+    value: @Composable (() -> Unit)? = null,
     leadingContent: @Composable (() -> Unit)? = null,
     trailingContent: @Composable (() -> Unit)? = null,
-    shape: Shape = MaterialTheme.shapes.medium,
+    shape: Shape = RoundedCornerShape(0),
     tonalElevation: Dp = 0.dp,
     shadowElevation: Dp = 0.dp,
     enabled: Boolean = true,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit = {}
 ) {
     CompositionLocalProvider(
         LocalPreferenceState provides enabled
@@ -74,8 +81,10 @@ fun BasePreference(
             if (enabled) onClick()
         }
         Surface(
-            onClick = preferenceOnClick,
-            modifier = modifier,
+            modifier = modifier.combinedClickable(
+                onClick = preferenceOnClick,
+                onLongClick = onLongClick
+            ),
             shape = shape,
             tonalElevation = tonalElevation,
             shadowElevation = shadowElevation
@@ -83,7 +92,8 @@ fun BasePreference(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(all = 12.dp),
+                    .padding(horizontal = 16.dp)
+                    .heightIn(min = 72.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -94,6 +104,7 @@ fun BasePreference(
                 ) {
                     title()
                     subContent?.invoke()
+                    value?.invoke()
                 }
                 trailingContent?.invoke()
             }
