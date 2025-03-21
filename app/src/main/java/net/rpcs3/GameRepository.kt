@@ -1,6 +1,7 @@
 package net.rpcs3
 
 import android.content.res.Resources.NotFoundException
+import androidx.annotation.Keep
 import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
@@ -108,7 +109,8 @@ class GameRepository {
                 }
             }
         }
-
+        
+        @Keep
         @JvmStatic
         fun add(gameInfos: Array<GameInfo>, progressId: Long) {
             synchronized(instance) {
