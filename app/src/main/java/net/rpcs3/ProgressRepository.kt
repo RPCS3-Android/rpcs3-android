@@ -90,7 +90,7 @@ class ProgressRepository {
 
             val builder = NotificationCompat.Builder(context, "rpcs3-progress").apply {
                 setContentTitle(title)
-                setSmallIcon(R.drawable.ic_rpcs3_foreground)
+                setSmallIcon(R.drawable.ic_rpcs3_monochrome)
                 setCategory(NotificationCompat.CATEGORY_SERVICE)
                 setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 setProgress(0, 0, true)
