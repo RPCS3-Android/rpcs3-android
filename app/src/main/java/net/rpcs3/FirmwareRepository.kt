@@ -3,6 +3,7 @@ package net.rpcs3
 import android.content.res.Resources.NotFoundException
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import androidx.annotation.Keep
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -48,10 +49,15 @@ class FirmwareRepository {
                 }
         }
 
-        @JvmStatic fun onFirmwareInstalled(version: String?) {
+        @Keep
+        @JvmStatic
+        fun onFirmwareInstalled(version: String?) {
             updateStatus(version, FirmwareStatus.Installed)
         }
-        @JvmStatic fun onFirmwareCompiled(version: String?) {
+
+        @Keep
+        @JvmStatic
+        fun onFirmwareCompiled(version: String?) {
             updateStatus(version, FirmwareStatus.Compiled)
         }
 
