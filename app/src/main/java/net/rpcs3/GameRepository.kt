@@ -21,7 +21,7 @@ enum class GameFlag {
 }
 
 @Serializable
-data class GameInfo(
+data class GameInfo @Keep constructor(
     val path: String,
     var name: String? = null,
     var iconPath: String? = null,
