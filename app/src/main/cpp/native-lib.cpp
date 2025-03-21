@@ -758,7 +758,28 @@ static std::string locateEbootPath(const std::string &root) {
   return {};
 }
 
-static std::optional<GameInfo> fetchGameInfo(const psf::registry &psf, std::filesystem::path psfRootPath = {}) {
+static std::string locateParamSfoPath(const std::string &root) {
+  if (std::filesystem::is_regular_file(root)) {
+    return root;
+  }
+
+  for (auto suffix : {
+           "/PARAM.SFO",
+           "/PS3_GAME/PARAM.SFO",
+       }) {
+    std::string tryPath = root + suffix;
+
+    if (std::filesystem::is_regular_file(tryPath)) {
+      return tryPath;
+    }
+  }
+
+  return {};
+}
+
+static std::optional<GameInfo>
+fetchGameInfo(const psf::registry &psf,
+              std::filesystem::path psfRootPath = {}) {
   auto titleId = std::string(psf::get_string(psf, "TITLE_ID"));
   auto name = std::string(psf::get_string(psf, "TITLE"));
   auto bootable = psf::get_integer(psf, "BOOTABLE", 0);
@@ -1337,9 +1358,9 @@ private:
 
     if (fs::is_file(workload.path)) {
       if (!is_vsh) {
-        auto sfoPath = rootPath / "PARAM.SFO";
+        auto sfoPath = locateParamSfoPath(rootPath);
 
-        if (std::filesystem::is_regular_file(sfoPath)) {
+        if (!sfoPath.empty()) {
           const auto psf = psf::load_object(sfoPath);
           rpcs3_android.warning("title id is %s",
                                 psf::get_string(psf, "TITLE_ID"));
@@ -1689,7 +1710,8 @@ Java_net_rpcs3_RPCS3_initialize(JNIEnv *env, jobject, jstring rootDir) {
     if (std::filesystem::exists(fs::get_log_dir() + "RPCS3.log")) {
       std::error_code ec;
       std::filesystem::remove(fs::get_log_dir() + "RPCS3.old.log", ec);
-      std::filesystem::rename(fs::get_log_dir() + "RPCS3.log", fs::get_log_dir() + "RPCS3.old.log", ec);
+      std::filesystem::rename(fs::get_log_dir() + "RPCS3.log",
+                              fs::get_log_dir() + "RPCS3.old.log", ec);
     }
 
     // Limit log size to ~25% of free space
@@ -2144,9 +2166,9 @@ static bool installEdat(JNIEnv *env, fs::file &&file, jlong progressId,
 
   if (!rootPath.empty()) {
     auto ebootPath = locateEbootPath(rootPath);
-    auto sfoPath = std::filesystem::path(rootPath) / "PARAM.SFO";
+    auto sfoPath = locateParamSfoPath(rootPath);
 
-    if (!std::filesystem::is_regular_file(sfoPath)) {
+    if (sfoPath.empty()) {
       progress.failure("Game is broken: PARAM.SFO not found");
       return false;
     }
@@ -2364,6 +2386,29 @@ static bool installIso(JNIEnv *env, fs::file &&file, jlong progressId) {
 extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installFw(
     JNIEnv *env, jobject, jint fd, jlong progressId) {
   return installPup(env, fs::file::from_native_handle(fd), progressId);
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_net_rpcs3_RPCS3_isInstallableFile(JNIEnv *env, jobject, jint fd) {
+  auto file = fs::file::from_native_handle(fd);
+  AtExit atExit{[&] { file.release_handle(); }};
+
+  auto type = getFileType(file);
+  file.seek(0);
+  return type != FileType::Unknown && type != FileType::Rap; // FIXME: implement rap preinstallation
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_net_rpcs3_RPCS3_getDirInstallPath(JNIEnv *env, jobject, jint fd) {
+  auto file = fs::file::from_native_handle(fd);
+  AtExit atExit{[&] { file.release_handle(); }};
+
+  auto psf = psf::load_object(file, "");
+  if (auto gameInfo = fetchGameInfo(psf)) {
+    return wrap(env, gameInfo->path);
+  }
+
+  return nullptr;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL

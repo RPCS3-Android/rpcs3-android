@@ -17,12 +17,32 @@ enum class PrecompilerServiceAction {
 }
 
 class PrecompilerService : Service() {
-    private var progressId = 1L;
     companion object {
         fun start(context: Context, action: PrecompilerServiceAction, uri: Uri?) {
             val intent = Intent(context, PrecompilerService::class.java)
             intent.putExtra("action", action.ordinal)
             intent.putExtra("uri", uri)
+
+            try {
+                context.startForegroundService(intent)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        fun start(context: Context, action: PrecompilerServiceAction, batch: ArrayList<Uri>) {
+            if (batch.isEmpty()) {
+                return
+            }
+
+            if (batch.size == 1) {
+                start(context, action, batch[0])
+                return
+            }
+
+            val intent = Intent(context, PrecompilerService::class.java)
+            intent.putExtra("action", action.ordinal)
+            intent.putExtra("batch", batch)
 
             try {
                 context.startForegroundService(intent)
@@ -44,16 +64,7 @@ class PrecompilerService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val uri = intent?.getParcelableExtra<Uri>("uri")
-        val action = intent?.getIntExtra("action", 0)
-        val isFwInstall = action == PrecompilerServiceAction.InstallFirmware.ordinal
-
-        if (uri == null) {
-            stopSelf(startId)
-            return START_NOT_STICKY
-        }
-
+    fun install(isFw: Boolean, uri: Uri, installProgress: Long): Boolean {
         val descriptor = contentResolver.openAssetFileDescriptor(uri, "r")
         val fd = descriptor?.parcelFileDescriptor?.fd
 
@@ -64,6 +75,39 @@ class PrecompilerService : Service() {
                 e.printStackTrace()
             }
 
+            return false
+        }
+
+        val installResult =
+            if (isFw)
+                RPCS3.instance.installFw(fd, installProgress)
+            else
+                RPCS3.instance.install(fd, installProgress)
+
+        if (!installResult) {
+            try {
+                ProgressRepository.onProgressEvent(installProgress, -1, 0)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        try {
+            descriptor.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return true
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val batch = intent?.getParcelableArrayListExtra<Uri>("batch")
+        val uri = intent?.getParcelableExtra<Uri>("uri")
+        val action = intent?.getIntExtra("action", 0)
+        val isFwInstall = action == PrecompilerServiceAction.InstallFirmware.ordinal
+
+        if (uri == null && batch == null) {
             stopSelf(startId)
             return START_NOT_STICKY
         }
@@ -77,7 +121,6 @@ class PrecompilerService : Service() {
                     if (isFwInstall) {
                         FirmwareRepository.progressChannel.value = null
                     }
-                    stopSelf(startId)
                 }
             }
 
@@ -88,7 +131,7 @@ class PrecompilerService : Service() {
         try {
             ServiceCompat.startForeground(
                 this,
-                progressId.toInt(),
+                installProgress.toInt(),
                 NotificationCompat.Builder(this, "rpcs3-progress").build(),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
@@ -101,25 +144,14 @@ class PrecompilerService : Service() {
         }
 
         thread {
-            val installResult =
-                if (isFwInstall)
-                    RPCS3.instance.installFw(fd, installProgress)
-                else
-                    RPCS3.instance.install(fd, installProgress)
-
-            if (!installResult) {
-                try {
-                    ProgressRepository.onProgressEvent(installProgress, -1, 0)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+            if (uri != null) {
+                install(isFwInstall, uri, installProgress)
+            } else batch?.forEach { uri ->
+                // FIXME: create child progress
+                install(isFwInstall, uri, installProgress)
             }
 
-            try {
-                descriptor.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            stopSelf(startId)
         }
 
         return START_STICKY

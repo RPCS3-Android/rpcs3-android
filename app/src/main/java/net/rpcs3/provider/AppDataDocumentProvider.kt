@@ -66,7 +66,7 @@ class AppDataDocumentProvider : DocumentsProvider() {
             .add(Root.COLUMN_AVAILABLE_BYTES, baseDirectory().freeSpace)
             .add(Root.COLUMN_TITLE, context().getString(R.string.app_name))
             .add(Root.COLUMN_MIME_TYPES, "*/*")
-            .add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
+            .add(Root.COLUMN_ICON, R.mipmap.ic_rpcs3)
         return cursor
     }
 
@@ -129,7 +129,7 @@ class AppDataDocumentProvider : DocumentsProvider() {
         deleteDocument(documentId)
     }
 
-    override fun renameDocument(documentId: String?, displayName: String?): String? {
+    override fun renameDocument(documentId: String?, displayName: String?): String {
         if (documentId == null || displayName == null) {
             throw IllegalArgumentException("Document ID and display name must not be null")
         }
