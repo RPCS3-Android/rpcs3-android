@@ -69,20 +69,20 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val btnSelectX = totalWidth / 2 - startSelectSize - buttonSize * 2
         val btnSelectY = btnStartY
 
-        val btnL3X = btnL2X
-        val btnL3Y = btnL2Y - buttonSize - buttonSize / 2
-
         val btnL2X = buttonSize
         val btnL2Y = buttonSize
+
+        val btnL3X = btnL2X
+        val btnL3Y = btnL2Y - buttonSize - buttonSize / 2
 
         val btnL1X = btnL2X
         val btnL1Y = btnL2Y + buttonSize + buttonSize / 2
 
-        val btnR3X = btnR2X
-        val btnR3Y = btnR2Y - buttonSize - buttonSize / 2
-
         val btnR2X = totalWidth - buttonSize * 2
         val btnR2Y = btnL2Y
+
+        val btnR3X = btnR2X
+        val btnR3Y = btnR2Y - buttonSize - buttonSize / 2
 
         val btnR1X = btnR2X
         val btnR1Y = btnR2Y + buttonSize + buttonSize / 2
