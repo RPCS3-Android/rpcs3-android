@@ -65,6 +65,7 @@
 #include <condition_variable>
 #include <deque>
 #include <filesystem>
+#include <format>
 #include <functional>
 #include <iterator>
 #include <jni.h>
@@ -2443,13 +2444,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_installKey(
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
-  std::string result;
-
-  result += utils::get_system_info();
-  result += "\n";
-  result += "LLVM CPU: ";
-  result += fallback_cpu_detection();
-  result += "\n";
+  std::string result = std::format("{}\n\nLLVM CPU: {}\n\n", utils::get_system_info(), fallback_cpu_detection());
 
   {
     vk::instance device_enum_context;
@@ -2459,17 +2454,14 @@ Java_net_rpcs3_RPCS3_systemInfo(JNIEnv *env, jobject) {
           device_enum_context.enumerate_devices();
 
       for (const auto &gpu : gpus) {
-        result += "GPU: ";
-        result += gpu.get_name();
-        result += "\n";
-        result += "  Driver: ";
-        result += gpu.get_driver_name();
-        result += " v";
-        result += gpu.get_driver_version();
-        result += "\n";
-        result += "  Vulkan: ";
-        result += gpu.get_driver_vk_version();
-        result += "\n";
+        std::format_to(
+                std::back_inserter(result),
+                "GPU: {}\n\nDriver: {} (v{})\n\nVulkan: {}",
+                gpu.get_name(),
+                gpu.get_driver_name(),
+                gpu.get_driver_version(),
+                gpu.get_driver_vk_version()
+        );
       }
     }
   }
