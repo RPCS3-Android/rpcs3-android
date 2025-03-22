@@ -73,19 +73,19 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val btnL2Y = buttonSize * 2
 
         val btnL3X = btnL2X
-        val btnL3Y = btnL2Y - buttonSize - buttonSize / 2
+        val btnL3Y = btnL2Y - buttonSize - buttonSize / 4
 
         val btnL1X = btnL2X
-        val btnL1Y = btnL2Y + buttonSize + buttonSize / 2
+        val btnL1Y = btnL2Y + buttonSize + buttonSize / 4
 
         val btnR2X = totalWidth - buttonSize * 2
         val btnR2Y = btnL2Y
 
         val btnR3X = btnR2X
-        val btnR3Y = btnR2Y - buttonSize - buttonSize / 2
+        val btnR3Y = btnR2Y - buttonSize - buttonSize / 4
 
         val btnR1X = btnR2X
-        val btnR1Y = btnR2Y + buttonSize + buttonSize / 2
+        val btnR1Y = btnR2Y + buttonSize + buttonSize / 4
 
         dpad = createDpad(dpadAreaX, dpadAreaY, dpadW, dpadH)
 
