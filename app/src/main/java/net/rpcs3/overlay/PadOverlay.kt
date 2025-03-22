@@ -69,11 +69,17 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val btnSelectX = totalWidth / 2 - startSelectSize - buttonSize * 2
         val btnSelectY = btnStartY
 
+        val btnL3X = btnL2X
+        val btnL3Y = btnL2Y - buttonSize - buttonSize / 2
+
         val btnL2X = buttonSize
         val btnL2Y = buttonSize
 
         val btnL1X = btnL2X
         val btnL1Y = btnL2Y + buttonSize + buttonSize / 2
+
+        val btnR3X = btnR2X
+        val btnR3Y = btnR2Y - buttonSize - buttonSize / 2
 
         val btnR2X = totalWidth - buttonSize * 2
         val btnR2Y = btnL2Y
@@ -176,6 +182,15 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
                 Digital2Flags.CELL_PAD_CTRL_L2
             ),
             createButton(
+                R.drawable.l3,
+                btnL3X,
+                btnL3Y,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.CELL_PAD_CTRL_L3,
+                Digital2Flags.None
+            ),
+            createButton(
                 R.drawable.r1,
                 btnR1X,
                 btnR1Y,
@@ -192,6 +207,15 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
                 startSelectSize,
                 Digital1Flags.None,
                 Digital2Flags.CELL_PAD_CTRL_R2
+            ),
+            createButton(
+                R.drawable.r3,
+                btnR3X,
+                btnR3Y,
+                startSelectSize,
+                startSelectSize,
+                Digital1Flags.CELL_PAD_CTRL_R3,
+                Digital2Flags.None
             ),
         )
 
