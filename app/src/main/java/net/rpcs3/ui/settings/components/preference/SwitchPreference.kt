@@ -2,7 +2,7 @@ package net.rpcs3.ui.settings.components.preference
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material3.Switch
+import net.rpcs3.ui.settings.components.core.MaterialSwitch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
@@ -45,11 +45,10 @@ fun SwitchPreference(
         modifier = modifier,
         leadingIcon = leadingIcon,
         trailingContent = {
-            Switch(
+            MaterialSwitch(
                 checked = checked,
                 onCheckedChange = { onValueUpdated(it) },
-                enabled = enabled,
-                colors = switchColors
+                enabled = enabled
             )
         },
         enabled = enabled,
