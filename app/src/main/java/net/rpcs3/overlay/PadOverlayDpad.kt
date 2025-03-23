@@ -1,11 +1,14 @@
 package net.rpcs3.overlay
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.view.MotionEvent
 import androidx.core.graphics.drawable.toDrawable
+import kotlin.math.roundToInt
 
 private enum class DpadButton(val bit: Int) {
     Top(1 shl 0), Left(1 shl 1), Right(1 shl 2), Bottom(1 shl 3);
@@ -81,6 +84,38 @@ class PadOverlayDpad(
     }
 
     fun contains(x: Int, y: Int) = area.contains(x, y)
+
+    fun startDragging(x: Int, y: Int) {
+        // TODO: Implement me
+    }
+
+    fun updatePosition(x: Int, y: Int, force: Boolean = false) {
+        // TODO: implement me
+    }
+
+    fun stopDragging() {
+        // TODO: implement me
+    }
+
+    fun setScale(percent: Int) {
+        // TODO: implement me
+    }
+
+    fun setOpacity(percent: Int) {
+        // TODO: implement me
+    }
+
+    fun measureDefaultScale(): Int {
+        // TODO: implement me
+    }
+
+    fun resetConfigs() {
+        // TODO: implement me
+    }
+
+    fun getInfo(): Triple<String, Int, Int> {
+        return Triple("Dpad", prefs.getInt("dpad_scale", 50), prefs.getInt("dpad_opacity", 50))
+    }
 
     fun onTouch(event: MotionEvent, pointerIndex: Int, padState: State): Boolean {
         val action = event.actionMasked
@@ -178,7 +213,11 @@ class PadOverlayDpad(
             event.getX(pointerIndex).toInt(), event.getY(pointerIndex).toInt()
         )
     }
-
+    
+    fun getBounds(): Rect {
+        return drawableTop.bounds
+    }
+    
     fun draw(canvas: Canvas) {
         drawableLeft.alpha =
             if (btnState[0].isActive(DpadButton.Left) || btnState[1].isActive(DpadButton.Left)) 255 else idleAlpha

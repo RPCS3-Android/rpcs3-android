@@ -48,6 +48,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".overlay.OverlayEditActivity"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:screenOrientation="sensorLandscape"
+            android:launchMode="singleTask"
+            android:exported="false" >
+        </activity>
         
         <activity
             android:name=".MainActivity"
