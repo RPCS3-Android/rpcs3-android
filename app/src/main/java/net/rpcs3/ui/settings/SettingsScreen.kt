@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,7 +30,7 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SearchBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -71,6 +72,7 @@ fun AdvancedSettingsScreen(
 ) {
     val settingValue = remember { mutableStateOf(settings) }
     var searchQuery by remember { mutableStateOf("") }
+    var isSearching by remember { mutableStateOf(false) }
 
     val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
@@ -81,26 +83,50 @@ fun AdvancedSettingsScreen(
             val titlePath = path.replace("@@", " / ")
             Column {
                 LargeTopAppBar(
-                    title = { Text(text = "Advanced Settings$titlePath", fontWeight = FontWeight.Medium) },
+                    title = { 
+                        if (!isSearching) {
+                            Text(
+                                text = if (titlePath.isEmpty()) "Advanced Settings" else "$titlePath", 
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    },
                     scrollBehavior = topBarScrollBehavior,
                     navigationIcon = {
                         IconButton(onClick = navigateBack) {
                             Icon(imageVector = Icons.AutoMirrored.Default.KeyboardArrowLeft, contentDescription = null)
                         }
+                    },
+                    actions = {
+                        if (!isSearching) {
+                            IconButton(onClick = { isSearching = true }) {
+                                Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+                            }
+                        }
                     }
                 )
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    placeholder = { Text("Search settings...") },
-                    leadingIcon = {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = null)
-                    },
-                    singleLine = true
-                )
+                if (isSearching) {
+                    SearchBar(
+                        query = searchQuery,
+                        onQueryChange = { searchQuery = it },
+                        onSearch = {},
+                        active = true,
+                        onActiveChange = { isSearching = it },
+                        placeholder = { Text("Search settings...") },
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Default.Search, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { 
+                                searchQuery = "" 
+                                isSearching = false
+                            }) {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Close search")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {}
+                }
             }
         }
     ) { contentPadding ->
