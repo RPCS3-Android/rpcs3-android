@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,6 +27,7 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -66,6 +68,7 @@ fun AdvancedSettingsScreen(
     path: String = ""
 ) {
     val settingValue = remember { mutableStateOf(settings) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     Scaffold(
@@ -74,17 +77,29 @@ fun AdvancedSettingsScreen(
             .then(modifier),
         topBar = {
             val titlePath = path.replace("@@", " / ")
-            LargeTopAppBar(
-                title = { Text(text = "Advanced Settings$titlePath" , fontWeight = FontWeight.Medium) },
-                scrollBehavior = topBarScrollBehavior,
-                navigationIcon = {
-                    IconButton(
-                        onClick = navigateBack
-                    ) {
-                        Icon(imageVector = Icons.AutoMirrored.Default.KeyboardArrowLeft, null)
+            Column {
+                LargeTopAppBar(
+                    title = { Text(text = "Advanced Settings$titlePath", fontWeight = FontWeight.Medium) },
+                    scrollBehavior = topBarScrollBehavior,
+                    navigationIcon = {
+                        IconButton(onClick = navigateBack) {
+                            Icon(imageVector = Icons.AutoMirrored.Default.KeyboardArrowLeft, contentDescription = null)
+                        }
                     }
-                }
-            )
+                )
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    placeholder = { Text("Search settings...") },
+                    leadingIcon = {
+                        Icon(imageVector = Icons.Default.Search, contentDescription = null)
+                    },
+                    singleLine = true
+                )
+            }
         }
     ) { contentPadding ->
         LazyColumn(
@@ -92,7 +107,11 @@ fun AdvancedSettingsScreen(
                 .fillMaxSize()
                 .padding(contentPadding),
         ) {
-            settings.keys().forEach { key ->
+            val filteredKeys = settings.keys().asSequence()
+                .filter { it.contains(searchQuery, ignoreCase = true) }
+                .toList()
+                
+            filteredKeys.forEach { key ->
                 val itemPath = "$path@@$key"
                 item(key = key) {
                     val itemObject = settingValue.value[key] as? JSONObject
