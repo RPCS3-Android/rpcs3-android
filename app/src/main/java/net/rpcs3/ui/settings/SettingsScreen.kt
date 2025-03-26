@@ -9,6 +9,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BasicTextField
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -30,7 +31,6 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.SearchBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -81,53 +81,74 @@ fun AdvancedSettingsScreen(
             .then(modifier),
         topBar = {
             val titlePath = path.replace("@@", " / ")
-            Column {
-                LargeTopAppBar(
-                    title = { 
-                        if (!isSearching) {
-                            Text(
-                                text = if (titlePath.isEmpty()) "Advanced Settings" else "$titlePath", 
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    },
-                    scrollBehavior = topBarScrollBehavior,
-                    navigationIcon = {
-                        IconButton(onClick = navigateBack) {
-                            Icon(imageVector = Icons.AutoMirrored.Default.KeyboardArrowLeft, contentDescription = null)
-                        }
-                    },
-                    actions = {
-                        if (!isSearching) {
-                            IconButton(onClick = { isSearching = true }) {
-                                Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
+            LargeTopAppBar(
+                title = {
+                    if (isSearching) {
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp),
+                            singleLine = true,
+                            textStyle = TextStyle(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 20.sp
+                            ),
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(
+                                            MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .padding(8.dp)
+                                ) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "Search settings...",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    innerTextField()
+                                }
                             }
-                        }
+                        )
+                    } else {
+                        Text(
+                            text = if (titlePath.isEmpty()) "Advanced Settings" else titlePath,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
-                )
-                if (isSearching) {
-                    SearchBar(
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        onSearch = {},
-                        active = true,
-                        onActiveChange = { isSearching = it },
-                        placeholder = { Text("Search settings...") },
-                        leadingIcon = {
-                            Icon(imageVector = Icons.Default.Search, contentDescription = null)
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = { 
-                                searchQuery = "" 
+                },
+                scrollBehavior = topBarScrollBehavior,
+                navigationIcon = {
+                    IconButton(onClick = navigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Default.KeyboardArrowLeft,
+                            contentDescription = null
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            if (isSearching) {
+                                searchQuery = ""
                                 isSearching = false
-                            }) {
-                                Icon(imageVector = Icons.Default.Close, contentDescription = "Close search")
+                            } else {
+                                isSearching = true
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {}
+                        }
+                    ) {
+                        Icon(
+                            imageVector = if (isSearching) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = if (isSearching) "Close Search" else "Search"
+                        )
+                    }
                 }
-            }
+            )
         }
     ) { contentPadding ->
         LazyColumn(
