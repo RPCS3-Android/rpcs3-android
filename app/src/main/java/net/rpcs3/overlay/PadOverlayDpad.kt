@@ -52,6 +52,7 @@ class PadOverlayDpad(
     private val btnState = arrayOf(DpadState(), DpadState())
     private val digitalBits = arrayOf(0, 0)
     var idleAlpha: Int = 255
+    var dragging: Boolean = false
 
     init {
         drawableTop.setBounds(
@@ -105,16 +106,16 @@ class PadOverlayDpad(
         // TODO: implement me
     }
 
-    fun measureDefaultScale(): Int {
+    /*fun measureDefaultScale(): Int {
         // TODO: implement me
-    }
+    }*/
 
     fun resetConfigs() {
         // TODO: implement me
     }
 
     fun getInfo(): Triple<String, Int, Int> {
-        return Triple("Dpad", prefs.getInt("dpad_scale", 50), prefs.getInt("dpad_opacity", 50))
+        return Triple("Dpad", 50, 50)
     }
 
     fun onTouch(event: MotionEvent, pointerIndex: Int, padState: State): Boolean {
