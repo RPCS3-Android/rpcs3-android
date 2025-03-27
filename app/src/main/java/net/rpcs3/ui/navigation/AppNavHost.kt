@@ -66,6 +66,7 @@ import net.rpcs3.PrecompilerServiceAction
 import net.rpcs3.ProgressRepository
 import net.rpcs3.R
 import net.rpcs3.RPCS3
+import net.rpcs3.overlay.OverlayEditActivity
 import net.rpcs3.dialogs.AlertDialogQueue
 import net.rpcs3.ui.drivers.GpuDriversScreen
 import net.rpcs3.ui.games.GamesScreen
@@ -270,6 +271,20 @@ fun GamesDestination(
                         selected = false,
                         icon = { Icon(Icons.Default.Settings, null) },
                         onClick = navigateToSettings
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Edit Overlay") },
+                        selected = false,
+                        icon = { Icon(Icons.Default.Settings, null) },
+                        onClick = {
+                            context.startActivity(
+                                Intent(
+                                    context,
+                                    OverlayEditActivity::class.java
+                                )
+                            )
+                        }
                     )
 
                     NavigationDrawerItem(
