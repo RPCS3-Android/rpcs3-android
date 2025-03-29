@@ -214,6 +214,10 @@ object FileUtil {
         val paths = uri.pathSegments
         return paths.size == 2 && "tree" == paths[0]
     }
+
+    fun deleteCache(ctx: Context, gameId: String): Boolean {
+         return File(ctx.getExternalFilesDir(null)!!, "cache/cache/$gameId").deleteRecursively()
+    }
 }
 
 class SimpleDocument(val filename: String, val mimeType: String, val uri: Uri) {
