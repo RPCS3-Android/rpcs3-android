@@ -439,7 +439,7 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         digital2: Digital2Flags
     ): PadOverlayButton {
         val resources = context!!.resources
-        val bitmap = getBitmap(resources, width, height)
+        val bitmap = getBitmap(resourceId, width, height)
         val result = PadOverlayButton(context!!, resources, bitmap, digital1.bit, digital2.bit)
         val scale = prefs.getInt("button_${digital1.bit}_${digital2.bit}_scale", 0)
         val alpha = prefs.getInt("button_${digital1.bit}_${digital2.bit}_opacity", 50)
