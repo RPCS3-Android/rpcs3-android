@@ -1626,11 +1626,18 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_overlayPadData(
   for (auto &btn : pad->m_buttons) {
     if (btn.m_offset == CELL_PAD_BTN_OFFSET_DIGITAL1) {
       btn.m_pressed = (digital1 & btn.m_outKeyCode) != 0;
-      btn.m_value = btn.m_pressed ? 255 : 0;
+
+      if (btn.m_outKeyCode == CELL_PAD_CTRL_PS && btn.m_pressed) {
+        if (auto padThread = pad::get_pad_thread(true)) {
+          padThread->open_home_menu();
+        }
+      }
+
     } else if (btn.m_offset == CELL_PAD_BTN_OFFSET_DIGITAL2) {
       btn.m_pressed = (digital2 & btn.m_outKeyCode) != 0;
-      btn.m_value = btn.m_pressed ? 255 : 0;
     }
+
+      btn.m_value = btn.m_pressed ? 255 : 0;
   }
 
   pad->m_sticks[0].m_value = leftStickX;
@@ -1800,6 +1807,18 @@ extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_RPCS3_kill(JNIEnv *env,
   Emu.Kill();
 }
 
+extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_RPCS3_resume(JNIEnv *env,
+                                                              jobject) {
+    Emu.Resume();
+}
+
+extern "C" JNIEXPORT void JNICALL Java_net_rpcs3_RPCS3_openHomeMenu(JNIEnv *env,
+                                                                    jobject) {
+  if (auto padThread = pad::get_pad_thread(true)) {
+    padThread->open_home_menu();
+  }
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_net_rpcs3_RPCS3_getTitleId(JNIEnv *env, jobject) {
   return wrap(env, Emu.GetTitleID());
@@ -1813,6 +1832,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_net_rpcs3_RPCS3_surfaceEvent(
     auto prevWindow = g_native_window.exchange(nullptr);
     if (prevWindow != nullptr) {
       ANativeWindow_release(prevWindow);
+    }
+
+    if (auto padThread = pad::get_pad_thread()) {
+      padThread->open_home_menu();
     }
 
     Emu.Pause();

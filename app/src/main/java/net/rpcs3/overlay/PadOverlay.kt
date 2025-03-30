@@ -1,20 +1,26 @@
 package net.rpcs3.overlay
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.VectorDrawable
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.SurfaceView
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.scale
 import net.rpcs3.Digital1Flags
 import net.rpcs3.Digital2Flags
 import net.rpcs3.R
 import net.rpcs3.RPCS3
 import kotlin.math.min
+
 
 private const val idleAlpha = (0.3 * 255).toInt()
 
@@ -89,6 +95,9 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val btnR1X = btnR2X
         val btnR1Y = btnR2Y + buttonSize + buttonSize / 2
 
+        val btnHomeX = totalWidth / 2 -  buttonSize / 2
+        val btnHomeY = btnStartY + (startSelectSize - buttonSize) / 2
+
         dpad = createDpad(
             dpadAreaX, dpadAreaY, dpadW, dpadH,
             dpadW / 2,
@@ -124,14 +133,14 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         leftStick = PadOverlayStick(
             resources,
             true,
-            BitmapFactory.decodeResource(resources, R.drawable.left_stick_background),
-            BitmapFactory.decodeResource(resources, R.drawable.left_stick)
+            getBitmap(R.drawable.left_stick_background, buttonSize * 2, buttonSize * 2),
+            getBitmap(R.drawable.left_stick, buttonSize * 2, buttonSize * 2)
         )
         rightStick = PadOverlayStick(
             resources,
             false,
-            BitmapFactory.decodeResource(resources, R.drawable.right_stick_background),
-            BitmapFactory.decodeResource(resources, R.drawable.right_stick)
+            getBitmap(R.drawable.right_stick_background, buttonSize * 2, buttonSize * 2),
+            getBitmap(R.drawable.right_stick, buttonSize * 2, buttonSize * 2)
         )
 
         leftStick.setBounds(0, 0, buttonSize * 2, buttonSize * 2)
@@ -144,8 +153,8 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val l3 = PadOverlayStick(
             resources,
             true,
-            BitmapFactory.decodeResource(resources, R.drawable.left_stick_background),
-            BitmapFactory.decodeResource(resources, R.drawable.l3),
+            getBitmap(R.drawable.left_stick_background, l3r3Size, l3r3Size),
+            getBitmap(R.drawable.l3, l3r3Size, l3r3Size),
             pressDigitalIndex = 0,
             pressBit = Digital1Flags.CELL_PAD_CTRL_L3.bit
         )
@@ -160,8 +169,8 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val r3 = PadOverlayStick(
             resources,
             false,
-            BitmapFactory.decodeResource(resources, R.drawable.right_stick_background),
-            BitmapFactory.decodeResource(resources, R.drawable.r3),
+            getBitmap(R.drawable.right_stick_background, l3r3Size, l3r3Size),
+            getBitmap(R.drawable.r3, l3r3Size, l3r3Size),
             pressDigitalIndex = 0,
             pressBit = Digital1Flags.CELL_PAD_CTRL_R3.bit
         )
@@ -196,6 +205,15 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
                 Digital2Flags.None
             ),
 
+            createButton(
+                R.drawable.ic_rpcs3_foreground,
+                btnHomeX,
+                btnHomeY,
+                buttonSize,
+                buttonSize,
+                Digital1Flags.CELL_PAD_CTRL_PS,
+                Digital2Flags.None
+            ),
             createButton(
                 R.drawable.l1,
                 btnL1X,
@@ -395,6 +413,22 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         }
     }
 
+    private fun getBitmap(resourceId: Int, width: Int, height: Int): Bitmap {
+        return when (val drawable = ContextCompat.getDrawable(context, resourceId)) {
+            is BitmapDrawable -> {
+                BitmapFactory.decodeResource(context.resources, resourceId).scale(width, height)
+            }
+
+            is VectorDrawable -> {
+                drawable.toBitmap(width, height)
+            }
+
+            else -> {
+                throw IllegalArgumentException("unexpected drawable type")
+            }
+        }
+    }
+
     private fun createButton(
         resourceId: Int,
         x: Int,
@@ -405,7 +439,7 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         digital2: Digital2Flags
     ): PadOverlayButton {
         val resources = context!!.resources
-        val bitmap = BitmapFactory.decodeResource(resources, resourceId)
+        val bitmap = getBitmap(resources, width, height)
         val result = PadOverlayButton(context!!, resources, bitmap, digital1.bit, digital2.bit)
         val scale = prefs.getInt("button_${digital1.bit}_${digital2.bit}_scale", 0)
         val alpha = prefs.getInt("button_${digital1.bit}_${digital2.bit}_opacity", 50)
@@ -433,11 +467,10 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         downResource: Int, downBit: Int,
         multitouch: Boolean
     ): PadOverlayDpad {
-        val resources = context!!.resources
-        val upBitmap = BitmapFactory.decodeResource(resources, upResource)
-        val leftBitmap = BitmapFactory.decodeResource(resources, leftResource)
-        val rightBitmap = BitmapFactory.decodeResource(resources, rightResource)
-        val downBitmap = BitmapFactory.decodeResource(resources, downResource)
+        val upBitmap = getBitmap(upResource, buttonWidth, buttonHeight)
+        val leftBitmap = getBitmap(leftResource, buttonHeight, buttonWidth)
+        val rightBitmap = getBitmap(rightResource, buttonHeight, buttonWidth)
+        val downBitmap = getBitmap(downResource, buttonWidth, buttonHeight)
 
         val result = PadOverlayDpad(
             resources, buttonWidth, buttonHeight, Rect(x, y, x + width, y + height), digital,

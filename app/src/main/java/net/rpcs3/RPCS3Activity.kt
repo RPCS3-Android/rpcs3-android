@@ -26,6 +26,7 @@ class RPCS3Activity : Activity() {
     private var gamePadState: State = State()
     private var usesAxisL2 = false
     private var usesAxisR2 = false
+    private var bootThread: Thread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,29 +41,50 @@ class RPCS3Activity : Activity() {
             binding.oscToggle.setImageResource(if (binding.padOverlay.isInvisible) R.drawable.ic_osc_off else R.drawable.ic_show_osc)
         }
 
-        thread {
-            if (RPCS3.getState() != EmulatorState.Stopped) {
-                Log.w("RPCS3 State", RPCS3.getState().name)
+        val gamePath = intent.getStringExtra("path")!!
 
-                if (RPCS3.getState() != EmulatorState.Stopping) {
-                    RPCS3.instance.kill()
+
+        bootThread = thread {
+            if (RPCS3.getState() != EmulatorState.Stopped) {
+                val state = RPCS3.getState()
+                Log.w("RPCS3 State", state.name)
+
+                if (state == EmulatorState.Paused && RPCS3.activeGame.value == gamePath) {
+                    RPCS3.instance.resume()
+                    return@thread
                 }
 
-                while (RPCS3.getState() != EmulatorState.Stopped) {
-                    Thread.sleep(300)
+                if (RPCS3.getState() != EmulatorState.Stopping && RPCS3.getState() != EmulatorState.Stopped) {
+                    RPCS3.instance.kill()
+
+                    while (RPCS3.getState() != EmulatorState.Stopped) {
+                        Thread.sleep(300)
+                        if (Thread.interrupted()) {
+                            return@thread
+                        }
+                    }
                 }
             }
 
             Log.w("RPCS3 State", RPCS3.getState().name)
+            RPCS3.activeGame.value = gamePath
 
-            val bootResult = RPCS3.boot(intent.getStringExtra("path")!!)
-
+            val bootResult = RPCS3.boot(gamePath)
             if (bootResult != BootResult.NoErrors) {
                 AlertDialogQueue.showDialog("Boot Failed", "Error: ${bootResult.name}")
                 finish()
             }
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        RPCS3.state.value = EmulatorState.Paused
+        unregisterUsbEventListener()
+        bootThread?.interrupt()
+        bootThread?.join()
+    }
+
 
     private fun keyCodeToPadBit(keyCode: Int): Pair<Int, Int> {
         when (keyCode) {
@@ -76,8 +98,16 @@ class RPCS3Activity : Activity() {
             KeyEvent.KEYCODE_BUTTON_Y -> return Pair(Digital2Flags.CELL_PAD_CTRL_TRIANGLE.bit, 1)
             KeyEvent.KEYCODE_BUTTON_L1 -> return Pair(Digital2Flags.CELL_PAD_CTRL_L1.bit, 1)
             KeyEvent.KEYCODE_BUTTON_R1 -> return Pair(Digital2Flags.CELL_PAD_CTRL_R1.bit, 1)
-            KeyEvent.KEYCODE_BUTTON_L2 -> return if (usesAxisL2) Pair(0, 0) else Pair(Digital2Flags.CELL_PAD_CTRL_L2.bit, 1)
-            KeyEvent.KEYCODE_BUTTON_R2 -> return if (usesAxisR2) Pair(0, 0) else Pair(Digital2Flags.CELL_PAD_CTRL_R2.bit, 1)
+            KeyEvent.KEYCODE_BUTTON_L2 -> return if (usesAxisL2) Pair(
+                0,
+                0
+            ) else Pair(Digital2Flags.CELL_PAD_CTRL_L2.bit, 1)
+
+            KeyEvent.KEYCODE_BUTTON_R2 -> return if (usesAxisR2) Pair(
+                0,
+                0
+            ) else Pair(Digital2Flags.CELL_PAD_CTRL_R2.bit, 1)
+
             KeyEvent.KEYCODE_BUTTON_START -> return Pair(Digital1Flags.CELL_PAD_CTRL_START.bit, 0)
             KeyEvent.KEYCODE_BUTTON_SELECT -> return Pair(Digital1Flags.CELL_PAD_CTRL_SELECT.bit, 0)
             KeyEvent.KEYCODE_BUTTON_THUMBL -> return Pair(Digital1Flags.CELL_PAD_CTRL_L3.bit, 0)
@@ -185,11 +215,6 @@ class RPCS3Activity : Activity() {
             gamePadState.rightStickX,
             gamePadState.rightStickY
         )
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        unregisterUsbEventListener()
     }
 
     private fun enableFullScreenImmersive() {

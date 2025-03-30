@@ -1,6 +1,7 @@
 package net.rpcs3
 
 import android.view.Surface
+import androidx.compose.runtime.mutableStateOf
 
 enum class Digital1Flags(val bit: Int)
 {
@@ -85,6 +86,8 @@ class RPCS3 {
     external fun settingsSet(path: String, value: String): Boolean
     external fun getState() : Int
     external fun kill()
+    external fun resume()
+    external fun openHomeMenu()
     external fun getTitleId(): String
     external fun supportsCustomDriverLoading() : Boolean
     external fun isInstallableFile(fd: Int) : Boolean
@@ -96,13 +99,23 @@ class RPCS3 {
         var initialized = false
         val instance = RPCS3()
         var rootDirectory: String = ""
+        var activeGame = mutableStateOf<String?>(null)
+        var state = mutableStateOf(EmulatorState.Stopped)
 
         fun boot(path: String): BootResult {
             return BootResult.fromInt(instance.boot(path))
         }
 
+        fun updateState() {
+            val newState = EmulatorState.fromInt(instance.getState())
+            if (newState != state.value) {
+                state.value = newState
+            }
+        }
+
         fun getState(): EmulatorState {
-            return EmulatorState.fromInt(instance.getState())
+            updateState()
+            return state.value
         }
 
         init {

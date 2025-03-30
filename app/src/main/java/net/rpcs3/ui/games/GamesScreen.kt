@@ -35,18 +35,23 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import net.rpcs3.EmulatorState
 import net.rpcs3.FirmwareRepository
 import net.rpcs3.Game
 import net.rpcs3.GameFlag
@@ -55,6 +60,7 @@ import net.rpcs3.GameProgress
 import net.rpcs3.GameProgressType
 import net.rpcs3.GameRepository
 import net.rpcs3.ProgressRepository
+import net.rpcs3.R
 import net.rpcs3.RPCS3
 import net.rpcs3.RPCS3Activity
 import net.rpcs3.dialogs.AlertDialogQueue
@@ -63,10 +69,7 @@ import kotlin.concurrent.thread
 
 private fun withAlpha(color: Color, alpha: Float): Color {
     return Color(
-        red = color.red,
-        green = color.green,
-        blue = color.blue,
-        alpha = alpha
+        red = color.red, green = color.green, blue = color.blue, alpha = alpha
     )
 }
 
@@ -76,6 +79,8 @@ fun GameItem(game: Game) {
     val context = LocalContext.current
     val menuExpanded = remember { mutableStateOf(false) }
     val iconExists = remember { mutableStateOf(false) }
+    var emulatorState by remember { RPCS3.state }
+    val emulatorActiveGame by remember { RPCS3.activeGame }
 
     val installKeyLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -84,8 +89,7 @@ fun GameItem(game: Game) {
                 val fd = descriptor?.parcelFileDescriptor?.fd
 
                 if (fd != null) {
-                    val installProgress =
-                        ProgressRepository.create(context, "License Installation")
+                    val installProgress = ProgressRepository.create(context, "License Installation")
 
                     game.addProgress(GameProgress(installProgress, GameProgressType.Compile))
 
@@ -116,8 +120,7 @@ fun GameItem(game: Game) {
 
     Column {
         DropdownMenu(
-            expanded = menuExpanded.value,
-            onDismissRequest = { menuExpanded.value = false }) {
+            expanded = menuExpanded.value, onDismissRequest = { menuExpanded.value = false }) {
             if (game.progressList.isEmpty()) {
                 DropdownMenuItem(
                     text = { Text("Delete") },
@@ -131,20 +134,20 @@ fun GameItem(game: Game) {
                         }
 
                         // FIXME: delete cache
-                    }
-                )
+                    })
             }
         }
 
-        Card(shape = RectangleShape, modifier = Modifier
-            .fillMaxSize()
-            .combinedClickable(
-                onClick = click@{
+        Card(
+            shape = RectangleShape,
+            modifier = Modifier
+                .fillMaxSize()
+                .combinedClickable(onClick = click@{
                     if (game.hasFlag(GameFlag.Locked)) {
                         AlertDialogQueue.showDialog(
                             title = "Missing key",
                             message = "This game requires key to play",
-                            onConfirm = { installKeyLauncher.launch("*/*")  },
+                            onConfirm = { installKeyLauncher.launch("*/*") },
                             onDismiss = {},
                             confirmText = "Install RAP file"
                         )
@@ -164,8 +167,7 @@ fun GameItem(game: Game) {
                         )
                     } else if (game.info.path != "$" && game.findProgress(
                             arrayOf(
-                                GameProgressType.Install,
-                                GameProgressType.Remove
+                                GameProgressType.Install, GameProgressType.Remove
                             )
                         ) == null
                     ) {
@@ -177,20 +179,17 @@ fun GameItem(game: Game) {
                         } else {
                             GameRepository.onBoot(game)
                             val emulatorWindow = Intent(
-                                context,
-                                RPCS3Activity::class.java
+                                context, RPCS3Activity::class.java
                             )
                             emulatorWindow.putExtra("path", game.info.path)
                             context.startActivity(emulatorWindow)
                         }
                     }
-                },
-                onLongClick = {
+                }, onLongClick = {
                     if (game.info.name.value != "VSH") {
                         menuExpanded.value = true
                     }
-                }
-            )
+                })
         ) {
             if (game.info.iconPath.value != null && !iconExists.value) {
                 if (game.progressList.isNotEmpty()) {
@@ -272,6 +271,13 @@ fun GameItem(game: Game) {
                             }
                         }
                     }
+                } else if (emulatorState == EmulatorState.Paused && emulatorActiveGame == game.info.path) {
+                    Card(modifier = Modifier.padding(5.dp)) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_play),
+                            contentDescription = null
+                        )
+                    }
                 }
 
                 if (game.hasFlag(GameFlag.Locked) || game.hasFlag(GameFlag.Trial)) {
@@ -329,7 +335,9 @@ fun GamesScreen() {
                 isRefreshing.value = true
                 thread {
                     GameRepository.clear()
-                    RPCS3.instance.collectGameInfo(RPCS3.rootDirectory + "/config/dev_hdd0/game", -1)
+                    RPCS3.instance.collectGameInfo(
+                        RPCS3.rootDirectory + "/config/dev_hdd0/game", -1
+                    )
                     RPCS3.instance.collectGameInfo(RPCS3.rootDirectory + "/config/games", -1)
                     Thread.sleep(300)
                     isRefreshing.value = false
@@ -364,10 +372,7 @@ fun GamesScreen() {
 @Composable
 fun GamesScreenPreview() {
     listOf(
-        "Minecraft",
-        "Skate 3",
-        "Mirror's Edge",
-        "Demon's Souls"
+        "Minecraft", "Skate 3", "Mirror's Edge", "Demon's Souls"
     ).forEach { x -> GameRepository.addPreview(arrayOf(GameInfo(x, x))) }
 
     GamesScreen()
