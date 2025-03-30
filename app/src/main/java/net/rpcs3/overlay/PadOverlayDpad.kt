@@ -29,10 +29,12 @@ private class DpadState(var mask: Int = 0) {
 }
 
 class PadOverlayDpad(
+    private val context: Context,
     resources: Resources,
-    buttonWidth: Int,
-    buttonHeight: Int,
-    private val area: Rect,
+    private var buttonWidth: Int,
+    private var buttonHeight: Int,
+    private val inputId: String,
+    private var area: Rect,
     private val digitalIndex: Int,
     imgTop: Bitmap,
     private val topBit: Int,
@@ -51,10 +53,104 @@ class PadOverlayDpad(
     private val locked = arrayOf(-1, -1)
     private val btnState = arrayOf(DpadState(), DpadState())
     private val digitalBits = arrayOf(0, 0)
+    private val prefs: SharedPreferences by lazy { context.getSharedPreferences("PadOverlayPrefs", Context.MODE_PRIVATE) }
+    private var offsetX = 0
+    private var offsetY = 0
+    // stores the default datas
+    private val defaultArea = area
+    private val defaultButtonWidth = buttonWidth
+    private val defaultButtonHeight = buttonHeight
     var idleAlpha: Int = 255
     var dragging: Boolean = false
 
     init {
+        loadSavedPosition()
+    }
+
+    fun contains(x: Int, y: Int) = area.contains(x, y)
+
+    fun startDragging(x: Int, y: Int) {
+        dragging = true
+        offsetX = x - area.left
+        offsetY = y - area.top
+    }
+
+    fun updatePosition(x: Int, y: Int, force: Boolean = false) {
+        if (!dragging && !force) return
+
+        val newLeft = x - offsetX
+        val newTop = y - offsetY
+        val newRight = newLeft + area.width()
+        val newBottom = newTop + area.height()
+
+        area.set(newLeft, newTop, newRight, newBottom)
+        updateBounds()
+        
+        prefs.edit()
+            .putInt("${inputId}_x", area.left)
+            .putInt("${inputId}_y", area.top)
+            .apply()
+    }
+
+    fun stopDragging() {
+        dragging = false
+    }
+
+    fun setScale(percent: Int) {
+        val scaleFactor = percent / 100f
+        val newWidth = (1024 * scaleFactor).roundToInt()
+        val newHeight = (1024 * scaleFactor).roundToInt()
+        val centerX = area.centerX()
+        val centerY = area.centerY()
+        
+        area.set(centerX - newWidth / 2, centerY - newHeight / 2, centerX + newWidth / 2, centerY + newHeight / 2)
+        // FIXME: Implement proper calculation which will work for all buttons
+        buttonWidth = newWidth / 2
+        buttonHeight = newHeight / 2 - newHeight / 20
+        updateBounds()
+
+        prefs.edit()
+            .putInt("${inputId}_x", area.left)
+            .putInt("${inputId}_y", area.top)
+            .putInt("${inputId}_scale", percent)
+            .apply()
+    }
+
+    fun setOpacity(percent: Int) {
+        idleAlpha = (255 * percent / 100).coerceIn(0, 255)
+        prefs.edit().putInt("${inputId}_opacity", idleAlpha).apply()
+    }
+
+    fun resetConfigs() {
+        prefs.edit()
+            .remove("${inputId}_x")
+            .remove("${inputId}_y")
+            .remove("${inputId}_scale")
+            .apply()
+        area = defaultArea
+        setOpacity(50)
+        buttonWidth = defaultButtonWidth
+        buttonHeight = defaultButtonHeight
+        updateBounds()
+    }
+
+    private fun loadSavedPosition() {
+        val x = prefs.getInt("${inputId}_x", area.left)
+        val y = prefs.getInt("${inputId}_y", area.top)
+        val scale = prefs.getInt("${inputId}_scale", -1)
+        updatePosition(x, y, force = true)
+        if (scale != -1) setScale(scale)
+    }
+
+    /*fun measureDefaultScale(): Int {
+        // TODO: implement me
+    }*/
+
+    fun getInfo(): Triple<String, Int, Int> {
+        return Triple("Dpad", prefs.getInt("${inputId}_scale", 50), prefs.getInt("${inputId}_scale", 50))
+    }
+
+    private fun updateBounds() {
         drawableTop.setBounds(
             area.centerX() - buttonWidth / 2,
             area.top,
@@ -82,40 +178,6 @@ class PadOverlayDpad(
             area.right,
             area.centerY() + buttonWidth / 2,
         )
-    }
-
-    fun contains(x: Int, y: Int) = area.contains(x, y)
-
-    fun startDragging(x: Int, y: Int) {
-        // TODO: Implement me
-    }
-
-    fun updatePosition(x: Int, y: Int, force: Boolean = false) {
-        // TODO: implement me
-    }
-
-    fun stopDragging() {
-        // TODO: implement me
-    }
-
-    fun setScale(percent: Int) {
-        // TODO: implement me
-    }
-
-    fun setOpacity(percent: Int) {
-        // TODO: implement me
-    }
-
-    /*fun measureDefaultScale(): Int {
-        // TODO: implement me
-    }*/
-
-    fun resetConfigs() {
-        // TODO: implement me
-    }
-
-    fun getInfo(): Triple<String, Int, Int> {
-        return Triple("Dpad", 50, 50)
     }
 
     fun onTouch(event: MotionEvent, pointerIndex: Int, padState: State): Boolean {
@@ -216,7 +278,7 @@ class PadOverlayDpad(
     }
     
     fun getBounds(): Rect {
-        return drawableTop.bounds
+        return area
     }
     
     fun draw(canvas: Canvas) {

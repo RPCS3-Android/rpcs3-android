@@ -99,7 +99,7 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val btnHomeY = btnStartY + (startSelectSize - buttonSize) / 2
 
         dpad = createDpad(
-            dpadAreaX, dpadAreaY, dpadW, dpadH,
+            "dpad", dpadAreaX, dpadAreaY, dpadW, dpadH,
             dpadW / 2,
             dpadH / 2 - dpadH / 20,
             0,
@@ -115,7 +115,7 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         )
 
         triangleSquareCircleCross = createDpad(
-            btnAreaX - buttonSize / 2, btnAreaY, buttonSize * 3, buttonSize * 3,
+            "triangleSquareCircleCross", btnAreaX - buttonSize / 2, btnAreaY, buttonSize * 3, buttonSize * 3,
             buttonSize,
             buttonSize,
             1,
@@ -279,6 +279,11 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
                             dpad.startDragging(x, y)
                             hit = true
                         }
+                        if (triangleSquareCircleCross.contains(x, y)) {
+                            selectedInput = triangleSquareCircleCross
+                            triangleSquareCircleCross.startDragging(x, y)
+                            hit = true
+                        }
                     }
                     MotionEvent.ACTION_MOVE -> {
                         buttons.forEach { button ->
@@ -291,12 +296,17 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
                             dpad.updatePosition(x, y)
                             hit = true
                         }
+                        if (triangleSquareCircleCross.contains(x, y)) {
+                            triangleSquareCircleCross.updatePosition(x, y)
+                            hit = true
+                        }
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         buttons.forEach { button ->
                             button.stopDragging()
                         }
                         dpad.stopDragging()
+                        triangleSquareCircleCross.stopDragging()
                     }
                 }
                 if (hit) invalidate()
@@ -454,6 +464,7 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
     }
 
     private fun createDpad(
+        inputId: String,
         x: Int,
         y: Int,
         width: Int,
@@ -473,7 +484,7 @@ class PadOverlay(context: Context?, attrs: AttributeSet?) : SurfaceView(context,
         val downBitmap = getBitmap(downResource, buttonWidth, buttonHeight)
 
         val result = PadOverlayDpad(
-            resources, buttonWidth, buttonHeight, Rect(x, y, x + width, y + height), digital,
+            context, resources, buttonWidth, buttonHeight, inputId, Rect(x, y, x + width, y + height), digital,
             upBitmap, upBit,
             leftBitmap, leftBit,
             rightBitmap, rightBit,
