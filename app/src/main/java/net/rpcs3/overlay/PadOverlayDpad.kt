@@ -57,7 +57,7 @@ class PadOverlayDpad(
     private var offsetX = 0
     private var offsetY = 0
     // stores the default datas
-    private val defaultArea = area
+    private val defaultArea = Rect(area)
     private val defaultButtonWidth = buttonWidth
     private val defaultButtonHeight = buttonHeight
     var idleAlpha: Int = 255
@@ -142,12 +142,14 @@ class PadOverlayDpad(
         if (scale != -1) setScale(scale)
     }
 
-    /*fun measureDefaultScale(): Int {
-        // TODO: implement me
-    }*/
+    fun measureDefaultScale(): Int {
+        val widthScale = defaultArea.width().toFloat() / 1024 * 100
+        val heightScale = defaultArea.height().toFloat() / 1024 * 100
+        return minOf(widthScale, heightScale).roundToInt()
+    }
 
     fun getInfo(): Triple<String, Int, Int> {
-        return Triple("Dpad", prefs.getInt("${inputId}_scale", 50), prefs.getInt("${inputId}_scale", 50))
+        return Triple("Dpad", prefs.getInt("${inputId}_scale", 50), prefs.getInt("${inputId}_scale", measureDefaultScale()))
     }
 
     private fun updateBounds() {
