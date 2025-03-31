@@ -78,11 +78,11 @@ class PadOverlayDpad(
     fun updatePosition(x: Int, y: Int, force: Boolean = false) {
         if (!dragging && !force) return
 
-        val newLeft = x - offsetX
-        val newTop = y - offsetY
+        val newLeft = if (!force) x - offsetX else x
+        val newTop = if (!force) y - offsetY else y
         val newRight = newLeft + area.width()
         val newBottom = newTop + area.height()
-
+        
         area.set(newLeft, newTop, newRight, newBottom)
         updateBounds()
         
