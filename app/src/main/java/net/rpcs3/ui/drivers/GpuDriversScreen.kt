@@ -56,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Divider
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,6 +64,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -466,6 +468,8 @@ fun fetchAndShowDrivers(
     var fetchResult by remember { mutableStateOf<FetchResult?>(null) }
     var fetchedDrivers by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
     var chosenIndex by remember { mutableStateOf(0) }
+    val scrollState = rememberScrollState()
+    val hasScrolled = remember { derivedStateOf { scrollState.value > 0 } }
 
     LaunchedEffect(Unit) {
         val fetchOutput = DriversFetcher.fetchReleases(repoUrl, bypassValidation)
@@ -534,11 +538,15 @@ fun fetchAndShowDrivers(
                     Text("Drivers", modifier = Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.headlineSmall)
                     Spacer(modifier = Modifier.height(8.dp))
                     
+                    if (hasScrolled.value) {
+                        Divider()
+                    }
+                    
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = maxHeight)
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(scrollState)
                     ) {
                         fetchedDrivers.forEachIndexed { index, driver ->
                             Row(
@@ -555,6 +563,10 @@ fun fetchAndShowDrivers(
                                 Text(text = driver.first, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
+                    }
+
+                    if (hasScrolled.value) {
+                        Divider()
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
