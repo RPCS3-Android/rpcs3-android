@@ -127,7 +127,7 @@ class PadOverlayDpad(
             .remove("${inputId}_y")
             .remove("${inputId}_scale")
             .apply()
-        area = defaultArea
+        area = Rect(defaultArea)
         setOpacity(50)
         buttonWidth = defaultButtonWidth
         buttonHeight = defaultButtonHeight
