@@ -102,7 +102,8 @@ fun AppNavHost() {
             route = "games"
         ) {
             GamesDestination(
-                navigateToSettings = { navController.navigate("settings") }
+                navigateToSettings = { navController.navigate("settings") },
+                drawerState
             )
         }
 
@@ -171,11 +172,11 @@ fun AppNavHost() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GamesDestination(
-    navigateToSettings: () -> Unit
+    navigateToSettings: () -> Unit,
+    drawerState: androidx.compose.material3.DrawerState
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     // val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     var emulatorState by remember { RPCS3.state }
     val emulatorActiveGame by remember { RPCS3.activeGame }
