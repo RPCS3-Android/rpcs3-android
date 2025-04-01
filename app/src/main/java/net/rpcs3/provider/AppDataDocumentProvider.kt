@@ -66,7 +66,7 @@ class AppDataDocumentProvider : DocumentsProvider() {
             .add(Root.COLUMN_AVAILABLE_BYTES, baseDirectory().freeSpace)
             .add(Root.COLUMN_TITLE, context().getString(R.string.app_name))
             .add(Root.COLUMN_MIME_TYPES, "*/*")
-            .add(Root.COLUMN_ICON, R.mipmap.ic_rpcs3)
+            .add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
         return cursor
     }
 
