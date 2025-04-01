@@ -281,7 +281,7 @@ fun GamesDestination(
                     NavigationDrawerItem(
                         label = { Text("Edit Overlay") },
                         selected = false,
-                        icon = { Icon(Icons.Default.Settings, null) },
+                        icon = { Icon(painter = painterResource(id = R.drawable.ic_show_osc), null) },
                         onClick = {
                             context.startActivity(
                                 Intent(
