@@ -467,7 +467,7 @@ fun SettingsScreen(
                     val file = DocumentFile.fromSingleUri(
                         context,
                         DocumentsContract.buildDocumentUri(
-                            AppDataDocumentProvider.AUTHORITY,
+                            "${context.packageName}.documents",
                             "${AppDataDocumentProvider.ROOT_ID}/cache/RPCS3.log"
                         )
                     )
@@ -503,7 +503,7 @@ private fun Context.launchBrowseIntent(
         val intent = Intent(action).apply {
             addCategory(Intent.CATEGORY_DEFAULT)
             data = DocumentsContract.buildRootUri(
-                AppDataDocumentProvider.AUTHORITY,
+                "$packageName.documents",
                 AppDataDocumentProvider.ROOT_ID
             )
             addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
